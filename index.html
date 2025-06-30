@@ -38,7 +38,6 @@
 
         <!-- Login View -->
         <div id="login-view" class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-            <!-- Login form remains the same as V1 -->
             <h2 class="text-2xl font-bold mb-6 text-center">Customer Portal Login</h2>
             <div id="login-error" class="text-red-500 mb-4 text-sm hidden"></div>
             <div class="space-y-4">
@@ -124,22 +123,27 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+        // Import Firestore SDK
+        import { getFirestore, collection, query, where, orderBy, limit, getDocs, startAfter, doc, getDoc, endBefore, limitToLast } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
+        // === IMPORTANT: PASTE YOUR NEWEST FIREBASE CONFIG HERE ===
         const firebaseConfig = {
             apiKey: "AIzaSyDAejmTSrLM8lbjMNXe0bNQS_1ffcr7yps",
             authDomain: "brnd-order-v4.firebaseapp.com",
-            projectId: "brnd-order-v4",
+            projectId: "brnd-order-v4", // Use your newest project ID
             storageBucket: "brnd-order-v4.firebasestorage.app",
             messagingSenderId: "55131157073",
             appId: "1:55131157073:web:a97861e68ceb14740afe70"
         };
         
-        // **IMPORTANT**: Get your NEW deployment URL after deploying the updated script.
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLbPZBE87NcrEHN4VOl9Uxr2HyQgL8_nh2pjbj5s7wYneBSAhJqFrglbzkpf1KtCqZ/exec'; // Replace with your new URL
+        // This URL is now only for SUBMITTING orders.
+        const ORDER_SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbzLbPZBE87NcrEHN4VOl9Uxr2HyQgL8_nh2pjbj5s7wYneBSAhJqFrglbzkpf1KtCqZ/exec';
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        // Initialize Firestore
+        const db = getFirestore(app);
 
         // --- DOM Elements ---
         const loginView = document.getElementById('login-view');
@@ -154,9 +158,13 @@
         const clearSearchBtn = document.getElementById('clear-search-btn');
         
         // --- App State ---
-        let allProducts = []; // Will store products for the current page
+        let productCache = {}; // Cache for products added to cart but not on current page
         let cart = {}; // { sku: quantity }
         let currentSearchQuery = '';
+        let lastVisibleDoc = null; // For Firestore pagination (Next page)
+        let firstVisibleDoc = null; // For Firestore pagination (Previous page)
+        let currentPage = 1;
+
 
         // --- AUTHENTICATION ---
         onAuthStateChanged(auth, user => {
@@ -164,7 +172,7 @@
                 loginView.classList.add('hidden');
                 appView.classList.remove('hidden');
                 renderHeaderControls(user);
-                fetchProducts(1); // Fetch the first page on login
+                fetchProducts(); // Fetch the first page on login
             } else {
                 loginView.classList.remove('hidden');
                 appView.classList.add('hidden');
@@ -174,47 +182,74 @@
             }
         });
         
-        // --- PRODUCT FETCHING & DISPLAY ---
-        async function fetchProducts(page = 1, searchQuery = '') {
+        // --- PRODUCT FETCHING (FIRESTORE) ---
+        async function fetchProducts(direction = 'next') {
             loadingProducts.classList.remove('hidden');
             productArea.classList.add('hidden');
             
-            currentSearchQuery = searchQuery; // Update state
-
             try {
-                // Build the URL with parameters
-                const url = new URL(APPS_SCRIPT_URL);
-                url.searchParams.append('page', page);
-                url.searchParams.append('limit', 100);
-                if (searchQuery) {
-                    url.searchParams.append('searchQuery', searchQuery);
+                const productsRef = collection(db, "products");
+                let q;
+
+                // Basic query setup
+                const baseQuery = [orderBy("sku"), limit(100)];
+                
+                // Add search filters if there's a query
+                if (currentSearchQuery) {
+                    const queryLower = currentSearchQuery.toLowerCase();
+                    // NOTE: Firestore can only perform range filters on one field.
+                    // We'll search by name_lowercase. A more advanced search needs a different tool like Algolia.
+                     q = query(productsRef, 
+                        where("name_lowercase", ">=", queryLower),
+                        where("name_lowercase", "<=", queryLower + '\uf8ff'),
+                        ...baseQuery
+                    );
+                } else {
+                     // Pagination logic
+                    if (direction === 'next' && lastVisibleDoc) {
+                        baseQuery.push(startAfter(lastVisibleDoc));
+                    } else if (direction === 'prev' && firstVisibleDoc) {
+                        // For 'prev', we reverse the query and get the last items
+                        const prevQuery = [orderBy("sku", "desc"), limit(100), startAfter(firstVisibleDoc)];
+                        q = query(productsRef, ...prevQuery);
+                    }
+                    
+                    q = query(productsRef, ...baseQuery);
                 }
 
-                const response = await fetch(url);
-                const data = await response.json();
 
-                if (data.success) {
-                    allProducts = data.products;
-                    displayProducts();
-                    renderPagination(data.pagination);
-                    productArea.classList.remove('hidden');
-                } else { throw new Error(data.message); }
+                const documentSnapshots = await getDocs(q);
+
+                const products = [];
+                documentSnapshots.forEach((doc) => {
+                    products.push({ sku: doc.id, ...doc.data() });
+                });
+
+                // Update pagination cursors
+                firstVisibleDoc = documentSnapshots.docs[0];
+                lastVisibleDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+
+                displayProducts(products);
+                renderPagination(products.length > 0, currentPage > 1);
+                productArea.classList.remove('hidden');
 
             } catch (error) {
-                productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">${error.message}</td></tr>`;
+                console.error("Error fetching from Firestore: ", error);
+                productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">Error: ${error.message}</td></tr>`;
                 productArea.classList.remove('hidden');
             } finally {
                 loadingProducts.classList.add('hidden');
             }
         }
         
-        function displayProducts() {
+        function displayProducts(products) {
             productTableBody.innerHTML = '';
-            if (allProducts.length === 0) {
+            if (products.length === 0) {
                  productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500">No products found.</td></tr>`;
                  return;
             }
-            allProducts.forEach(p => {
+            products.forEach(p => {
+                productCache[p.sku] = p; // Cache product data
                 const row = document.createElement('tr');
                 const quantityInCart = cart[p.sku] || 0;
                 row.innerHTML = `
@@ -223,7 +258,6 @@
                             <img src="${p.imageUrl}" alt="${p.name}" class="h-16 w-16 object-cover rounded-md" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/4a5568?text=N/A';">
                             <div>
                                 <div class="font-semibold text-gray-900">${p.name}</div>
-                                <div class="text-xs text-gray-500">${p.description}</div>
                             </div>
                         </div>
                     </td>
@@ -245,74 +279,49 @@
             });
         }
 
-        function renderPagination(pagination) {
-            const { currentPage, totalPages, totalItems } = pagination;
-            if (totalPages <= 1) {
-                paginationControls.innerHTML = '';
-                return;
-            }
-
-            const prevDisabled = currentPage === 1 ? 'pointer-events-none opacity-50' : '';
-            const nextDisabled = currentPage === totalPages ? 'pointer-events-none opacity-50' : '';
+        function renderPagination(hasNextPage, hasPrevPage) {
+            paginationControls.innerHTML = ''; // Clear existing
             
+            const prevDisabled = !hasPrevPage ? 'pointer-events-none opacity-50' : '';
+            const nextDisabled = !hasNextPage ? 'pointer-events-none opacity-50' : '';
+
             paginationControls.innerHTML = `
-                 <div class="flex-1 flex justify-between sm:hidden">
-                    <button data-page="${currentPage - 1}" class="prev-btn relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${prevDisabled}"> Previous </button>
-                    <button data-page="${currentPage + 1}" class="next-btn relative inline-flex items-center ml-3 px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${nextDisabled}"> Next </button>
-                </div>
-                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                    <div>
-                        <p class="text-sm text-gray-700">
-                        Page
-                        <span class="font-medium">${currentPage}</span>
-                        of
-                        <span class="font-medium">${totalPages}</span>
-                        (Total: ${totalItems} items)
-                        </p>
-                    </div>
-                    <div>
-                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                        <button data-page="${currentPage - 1}" class="prev-btn relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${prevDisabled}">
-                            <span class="sr-only">Previous</span>
-                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
-                        </button>
-                        <button data-page="${currentPage + 1}" class="next-btn relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${nextDisabled}">
-                            <span class="sr-only">Next</span>
-                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
-                        </button>
-                        </nav>
-                    </div>
-                </div>
-            `;
-
-            document.querySelectorAll('.prev-btn, .next-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const page = e.currentTarget.dataset.page;
-                    // Pass the current search query when paginating
-                    fetchProducts(parseInt(page), currentSearchQuery);
-                })
-            })
+                 <div class="flex justify-center mt-4 space-x-4">
+                    <button id="prev-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${prevDisabled}"> Previous Page </button>
+                    <button id="next-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${nextDisabled}"> Next Page </button>
+                </div>`;
+            
+            if (hasPrevPage) {
+                document.getElementById('prev-page-btn').addEventListener('click', () => { currentPage--; fetchProducts('prev'); });
+            }
+            if (hasNextPage) {
+                document.getElementById('next-page-btn').addEventListener('click', () => { currentPage++; fetchProducts('next'); });
+            }
         }
-
+        
         // --- SEARCH EVENT LISTENERS ---
         function performSearch() {
             const query = searchInput.value.trim();
-            fetchProducts(1, query); // Always go to page 1 for a new search
+            currentSearchQuery = query;
+            lastVisibleDoc = null; // Reset pagination
+            firstVisibleDoc = null;
+            currentPage = 1;
+            fetchProducts();
         }
         searchBtn.addEventListener('click', performSearch);
-        searchInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') {
-                performSearch();
-            }
-        });
+        searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') performSearch(); });
         clearSearchBtn.addEventListener('click', () => {
             searchInput.value = '';
-            fetchProducts(1, ''); // Fetch all products from page 1
+            currentSearchQuery = '';
+            lastVisibleDoc = null; // Reset pagination
+            firstVisibleDoc = null;
+            currentPage = 1;
+            fetchProducts();
         });
 
 
         // The rest of the JS code (auth, cart, modals) remains the same...
-        document.getElementById('signin-btn').addEventListener('click',()=>signInWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));document.getElementById('signup-btn').addEventListener('click',()=>createUserWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));const cartModal=document.getElementById('cart-modal'),cartItemsContainer=document.getElementById('cart-items'),cartTotalEl=document.getElementById('cart-total'),submitOrderBtn=document.getElementById('submit-order-btn'),closeCartBtn=document.getElementById('close-cart-btn'),statusModal=document.getElementById('status-modal'),statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message'),statusCloseBtn=document.getElementById('status-close-btn');function handleQuantityChange(e){const t=e.target.dataset.sku,a=parseInt(e.target.value,10)||0;a>0?cart[t]=a:delete cart[t];const n=allProducts.find(e=>e.sku===t),o=document.querySelector(`[data-subtotal-for="${t}"]`);n&&o&&(o.textContent=`$${(n.price*a).toFixed(2)}`),updateCart()}function updateCart(){if(0===Object.keys(cart).length)return cartItemsContainer.innerHTML='<p class="text-gray-500 text-center">Your cart is empty.</p>',cartTotalEl.textContent="$0.00",submitOrderBtn.disabled=!0,void document.getElementById("cart-item-count").classList.add("hidden");let e=0,t='<div class="space-y-4">',a=0;for(const n in cart){const o=allProducts.find(e=>e.sku===n),l=cart[n];if(o){const c=o.price*l;e+=c,a+=l,t+=`\n                        <div class="flex items-center gap-4">\n                            <img src="${o.imageUrl}" class="h-12 w-12 rounded-md object-cover">\n                            <div class="flex-grow">\n                                <div class="font-semibold">${o.name}</div>\n                                <div class="text-sm text-gray-500">${l} x $${o.price.toFixed(2)}</div>\n                            </div>\n                            <div class="font-semibold">$${c.toFixed(2)}</div>\n                        </div>\n                    `}}t+="</div>",cartItemsContainer.innerHTML=t,cartTotalEl.textContent=`$${e.toFixed(2)}`,submitOrderBtn.disabled=!1;const n=document.getElementById("cart-item-count");n.textContent=a,n.classList.remove("hidden")}function toggleCart(){cartModal.classList.toggle("hidden"),cartModal.querySelector("div").classList.toggle("translate-x-full")}async function placeOrder(){const e=auth.currentUser;if(!e)return void showStatusModal("Error","You must be signed in to place an order.");submitOrderBtn.disabled=!0,submitOrderBtn.textContent="Submitting...";const t=Object.keys(cart).map(e=>{let t=allProducts.find(t=>t.sku===e);if(!t){const a=Object.values(cart).map(t=>Object.keys(cart).find(e=>cart[e]===t));t=a.find(t=>t.sku===e)}return{...t,quantity:cart[e]}}),a=parseFloat(cartTotalEl.textContent.replace("$","")),n={user:{email:e.email,uid:e.uid},items:t,total:a};try{const o=await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"cors",redirect:"follow",body:JSON.stringify(n),headers:{"Content-Type":"text/plain;charset=utf-8"}}),l=await o.json();if(l.success)showStatusModal("Success!",`Your order #${l.orderNumber} has been submitted.`),toggleCart(),resetOrderState();else throw new Error(l.message)}catch(c){showStatusModal("Order Failed",`There was an issue: ${c.message}`)}finally{submitOrderBtn.disabled=!1,submitOrderBtn.textContent="Proceed to Order"}}function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart()}function showStatusModal(e,t){statusTitle.textContent=e,statusMessage.textContent=t,statusModal.classList.remove("hidden")}function renderHeaderControls(e){headerControls.innerHTML=`\n                <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-100">\n                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>\n                    <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>\n                </button>\n                <div class="flex items-center gap-2">\n                     <span class="text-sm text-gray-600 hidden md:block">${e.email}</span>\n                     <button id="signout-btn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Sign Out</button>\n                </div>\n            `,document.getElementById("signout-btn").addEventListener("click",()=>signOut(auth)),document.getElementById("cart-btn").addEventListener("click",toggleCart),closeCartBtn.addEventListener("click",toggleCart)}submitOrderBtn.addEventListener('click',placeOrder),statusCloseBtn.addEventListener('click',()=>statusModal.classList.add('hidden'));
+        document.getElementById('signin-btn').addEventListener('click',()=>signInWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));document.getElementById('signup-btn').addEventListener('click',()=>createUserWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));const cartModal=document.getElementById('cart-modal'),cartItemsContainer=document.getElementById('cart-items'),cartTotalEl=document.getElementById('cart-total'),submitOrderBtn=document.getElementById('submit-order-btn'),closeCartBtn=document.getElementById('close-cart-btn'),statusModal=document.getElementById('status-modal'),statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message'),statusCloseBtn=document.getElementById('status-close-btn');function handleQuantityChange(e){const t=e.target.dataset.sku,a=parseInt(e.target.value,10)||0;a>0?cart[t]=a:delete cart[t];const n=productCache[t],o=document.querySelector(`[data-subtotal-for="${t}"]`);n&&o&&(o.textContent=`$${(n.price*a).toFixed(2)}`),updateCart()}function updateCart(){if(0===Object.keys(cart).length)return cartItemsContainer.innerHTML='<p class="text-gray-500 text-center">Your cart is empty.</p>',cartTotalEl.textContent="$0.00",submitOrderBtn.disabled=!0,void document.getElementById("cart-item-count").classList.add("hidden");let e=0,t='<div class="space-y-4">',a=0;for(const n in cart){const o=productCache[n],l=cart[n];if(o){const c=o.price*l;e+=c,a+=l,t+=`\n                        <div class="flex items-center gap-4">\n                            <img src="${o.imageUrl}" class="h-12 w-12 rounded-md object-cover">\n                            <div class="flex-grow">\n                                <div class="font-semibold">${o.name}</div>\n                                <div class="text-sm text-gray-500">${l} x $${o.price.toFixed(2)}</div>\n                            </div>\n                            <div class="font-semibold">$${c.toFixed(2)}</div>\n                        </div>\n                    `}}t+="</div>",cartItemsContainer.innerHTML=t,cartTotalEl.textContent=`$${e.toFixed(2)}`,submitOrderBtn.disabled=!1;const n=document.getElementById("cart-item-count");n.textContent=a,n.classList.remove("hidden")}function toggleCart(){cartModal.classList.toggle("hidden"),cartModal.querySelector("div").classList.toggle("translate-x-full")}async function placeOrder(){const e=auth.currentUser;if(!e)return void showStatusModal("Error","You must be signed in to place an order.");submitOrderBtn.disabled=!0,submitOrderBtn.textContent="Submitting...";const t=Object.keys(cart).map(e=>{return{...productCache[e],quantity:cart[e]}}),a=parseFloat(cartTotalEl.textContent.replace("$","")),n={user:{email:e.email,uid:e.uid},items:t,total:a};try{const o=await fetch(ORDER_SUBMIT_URL,{method:"POST",mode:"cors",redirect:"follow",body:JSON.stringify(n),headers:{"Content-Type":"text/plain;charset=utf-8"}}),l=await o.json();if(l.success)showStatusModal("Success!",`Your order #${l.orderNumber} has been submitted.`),toggleCart(),resetOrderState();else throw new Error(l.message)}catch(c){showStatusModal("Order Failed",`There was an issue: ${c.message}`)}finally{submitOrderBtn.disabled=!1,submitOrderBtn.textContent="Proceed to Order"}}function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart()}function showStatusModal(e,t){statusTitle.textContent=e,statusMessage.textContent=t,statusModal.classList.remove("hidden")}function renderHeaderControls(e){headerControls.innerHTML=`\n                <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-100">\n                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>\n                    <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>\n                </button>\n                <div class="flex items-center gap-2">\n                     <span class="text-sm text-gray-600 hidden md:block">${e.email}</span>\n                     <button id="signout-btn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Sign Out</button>\n                </div>\n            `,document.getElementById("signout-btn").addEventListener("click",()=>signOut(auth)),document.getElementById("cart-btn").addEventListener("click",toggleCart),closeCartBtn.addEventListener("click",toggleCart)}submitOrderBtn.addEventListener('click',placeOrder),statusCloseBtn.addEventListener('click',()=>statusModal.classList.add('hidden'));
 
     </script>
 </body>
