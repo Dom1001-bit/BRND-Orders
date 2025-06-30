@@ -21,6 +21,19 @@
             .table-responsive td::before { content: attr(data-label); font-weight: 600; text-align: left; padding-right: 1rem; }
             .table-responsive td:nth-of-type(1) { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
         }
+        .form-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            outline: none;
+            transition: ring 0.2s;
+        }
+        .form-input:focus {
+            ring: 2px;
+            ring-color: #4f46e5;
+            border-color: #4f46e5;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -32,26 +45,15 @@
         <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
             <img src="https://i.imgur.com/GQya5pg.png" alt="Brand Logo" class="h-12">
             <div id="header-controls" class="flex items-center gap-4">
-                <!-- Cart and Auth controls will be populated by JS -->
+                 <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
+                </button>
             </div>
         </header>
 
-        <!-- Login View -->
-        <div id="login-view" class="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-            <h2 class="text-2xl font-bold mb-6 text-center">Customer Portal Login</h2>
-            <div id="login-error" class="text-red-500 mb-4 text-sm hidden"></div>
-            <div class="space-y-4">
-                <input type="email" id="email" placeholder="Email" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <input type="password" id="password" placeholder="Password" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-            <div class="flex items-center justify-between mt-6">
-                <button id="signin-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700">Sign In</button>
-                <button id="signup-btn" class="text-sm text-indigo-600 hover:underline">Create Account</button>
-            </div>
-        </div>
-
         <!-- Main App View (Ordering System) -->
-        <main id="app-view" class="hidden">
+        <main id="app-view">
             <div id="loading-products" class="text-center py-12">
                 <div class="spinner mx-auto"></div>
                 <p class="mt-4 text-gray-600">Loading fragrances...</p>
@@ -92,7 +94,7 @@
     </div>
 
     <!-- Cart Modal -->
-    <div id="cart-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex justify-end hidden z-40">
+    <div id="cart-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex justify-end hidden z-50">
         <div class="bg-white w-full max-w-lg h-full shadow-xl flex flex-col transform transition-transform translate-x-full">
             <div class="flex justify-between items-center p-6 border-b">
                 <h3 class="text-2xl font-bold">Your Cart</h3>
@@ -104,11 +106,40 @@
                     <span class="text-lg font-semibold">Grand Total:</span>
                     <span id="cart-total" class="text-2xl font-bold text-indigo-600">$0.00</span>
                 </div>
-                <button id="submit-order-btn" class="w-full bg-green-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400">Proceed to Order</button>
+                <button id="proceed-to-order-btn" class="w-full bg-green-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400">Proceed to Order</button>
             </div>
         </div>
     </div>
     
+    <!-- Customer Info Modal -->
+    <div id="customer-info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white w-full max-w-2xl h-full md:h-auto rounded-lg shadow-xl flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b">
+                <h3 class="text-2xl font-bold">Customer Information</h3>
+                <button id="close-customer-info-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <div id="form-error" class="text-red-500 mb-4 text-sm hidden"></div>
+                <form id="customer-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label for="cust-name" class="block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label><input type="text" id="cust-name" class="form-input mt-1"></div>
+                    <div><label for="cust-company" class="block text-sm font-medium text-gray-700">Company Name <span class="text-red-500">*</span></label><input type="text" id="cust-company" class="form-input mt-1"></div>
+                    <div class="md:col-span-2"><label for="cust-addr1" class="block text-sm font-medium text-gray-700">Address Line 1 <span class="text-red-500">*</span></label><input type="text" id="cust-addr1" class="form-input mt-1"></div>
+                    <div class="md:col-span-2"><label for="cust-addr2" class="block text-sm font-medium text-gray-700">Address Line 2</label><input type="text" id="cust-addr2" class="form-input mt-1"></div>
+                    <div><label for="cust-city" class="block text-sm font-medium text-gray-700">City <span class="text-red-500">*</span></label><input type="text" id="cust-city" class="form-input mt-1"></div>
+                    <div><label for="cust-state" class="block text-sm font-medium text-gray-700">State / Province</label><input type="text" id="cust-state" class="form-input mt-1"></div>
+                    <div><label for="cust-zip" class="block text-sm font-medium text-gray-700">ZIP / Postal Code</label><input type="text" id="cust-zip" class="form-input mt-1"></div>
+                    <div><label for="cust-country" class="block text-sm font-medium text-gray-700">Country <span class="text-red-500">*</span></label><input type="text" id="cust-country" class="form-input mt-1"></div>
+                    <div><label for="cust-phone" class="block text-sm font-medium text-gray-700">Phone <span class="text-red-500">*</span></label><input type="tel" id="cust-phone" class="form-input mt-1"></div>
+                    <div><label for="cust-email" class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label><input type="email" id="cust-email" class="form-input mt-1"></div>
+                    <div class="md:col-span-2"><label for="cust-notes" class="block text-sm font-medium text-gray-700">Notes</label><textarea id="cust-notes" rows="3" class="form-input mt-1"></textarea></div>
+                </form>
+            </div>
+             <div class="p-6 border-t bg-gray-50">
+                <button id="submit-final-order-btn" class="w-full bg-blue-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-blue-700">Submit Final Order</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Submission Status Modal -->
     <div id="status-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
         <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-sm mx-auto">
@@ -122,8 +153,6 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
-        // Import Firestore SDK
         import { getFirestore, collection, query, where, orderBy, limit, getDocs, startAfter, endBefore, limitToLast } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         // === IMPORTANT: PASTE YOUR NEWEST FIREBASE CONFIG HERE ===
@@ -141,12 +170,9 @@
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        // Initialize Firestore
         const db = getFirestore(app);
 
         // --- DOM Elements ---
-        const loginView = document.getElementById('login-view');
         const appView = document.getElementById('app-view');
         const headerControls = document.getElementById('header-controls');
         const productArea = document.getElementById('product-area');
@@ -156,6 +182,12 @@
         const searchInput = document.getElementById('search-input');
         const searchBtn = document.getElementById('search-btn');
         const clearSearchBtn = document.getElementById('clear-search-btn');
+        const cartBtn = document.getElementById('cart-btn');
+        
+        // Modals
+        const cartModal = document.getElementById('cart-modal');
+        const customerInfoModal = document.getElementById('customer-info-modal');
+        const statusModal = document.getElementById('status-modal');
         
         // --- App State ---
         let productCache = {}; // Cache for products added to cart but not on current page
@@ -165,22 +197,8 @@
         let firstVisibleDoc = null; // For Firestore pagination (Previous page)
         let currentPage = 1;
 
-
-        // --- AUTHENTICATION ---
-        onAuthStateChanged(auth, user => {
-            if (user) {
-                loginView.classList.add('hidden');
-                appView.classList.remove('hidden');
-                renderHeaderControls(user);
-                fetchProducts(); // Fetch the first page on login
-            } else {
-                loginView.classList.remove('hidden');
-                appView.classList.add('hidden');
-                productArea.classList.add('hidden');
-                headerControls.innerHTML = '';
-                resetOrderState();
-            }
-        });
+        // --- INITIALIZATION ---
+        fetchProducts(); // Fetch the first page on load
         
         // --- PRODUCT FETCHING (FIRESTORE) ---
         async function fetchProducts(direction = 'next') {
@@ -194,61 +212,29 @@
                 if (currentSearchQuery) {
                     // --- MULTI-FIELD SEARCH LOGIC ---
                     const queryLower = currentSearchQuery.toLowerCase();
-
-                    // Query 1: Search by name (prefix search)
-                    const nameQuery = query(productsRef, 
-                        orderBy("name_lowercase"), // MUST order by the field with the inequality
-                        where("name_lowercase", ">=", queryLower),
-                        where("name_lowercase", "<=", queryLower + '\uf8ff'),
-                        limit(50) // Limit results for performance
-                    );
-
-                    // Query 2: Search by brand (prefix search)
-                    const brandQuery = query(productsRef, 
-                        orderBy("brand_lowercase"), // MUST order by the field with the inequality
-                        where("brand_lowercase", ">=", queryLower),
-                        where("brand_lowercase", "<=", queryLower + '\uf8ff'),
-                        limit(50)
-                    );
-                    
-                    // Query 3: Search by UPC (exact match)
+                    const nameQuery = query(productsRef, orderBy("name_lowercase"), where("name_lowercase", ">=", queryLower), where("name_lowercase", "<=", queryLower + '\uf8ff'), limit(50));
+                    const brandQuery = query(productsRef, orderBy("brand_lowercase"), where("brand_lowercase", ">=", queryLower), where("brand_lowercase", "<=", queryLower + '\uf8ff'), limit(50));
                     const upcQuery = query(productsRef, where("upc", "==", currentSearchQuery), limit(50));
 
-                    // Run all queries in parallel
-                    const [nameSnap, brandSnap, upcSnap] = await Promise.all([
-                        getDocs(nameQuery),
-                        getDocs(brandQuery),
-                        getDocs(upcQuery)
-                    ]);
-
-                    // Combine and deduplicate results
+                    const [nameSnap, brandSnap, upcSnap] = await Promise.all([getDocs(nameQuery), getDocs(brandQuery), getDocs(upcQuery)]);
                     const foundProducts = new Map();
                     nameSnap.forEach(doc => foundProducts.set(doc.id, { sku: doc.id, ...doc.data() }));
                     brandSnap.forEach(doc => foundProducts.set(doc.id, { sku: doc.id, ...doc.data() }));
                     upcSnap.forEach(doc => foundProducts.set(doc.id, { sku: doc.id, ...doc.data() }));
 
                     products = Array.from(foundProducts.values());
-                    // Disable pagination for search results for simplicity
                     renderPagination(false, false); 
                 } else {
                     // --- PAGINATION LOGIC (NO SEARCH) ---
                     let q;
                     const baseQuery = [orderBy("sku"), limit(100)];
-
-                    if (direction === 'next' && lastVisibleDoc) {
-                        baseQuery.push(startAfter(lastVisibleDoc));
-                    } else if (direction === 'prev' && firstVisibleDoc) {
-                        const prevQuery = [orderBy("sku", "desc"), limit(100), startAfter(firstVisibleDoc)];
-                         q = query(productsRef, ...prevQuery);
-                    }
+                    if (direction === 'next' && lastVisibleDoc) { baseQuery.push(startAfter(lastVisibleDoc)); } 
+                    else if (direction === 'prev' && firstVisibleDoc) { baseQuery.push(endBefore(firstVisibleDoc), limitToLast(100)); }
                     
                     q = query(productsRef, ...baseQuery);
                     const documentSnapshots = await getDocs(q);
 
-                    documentSnapshots.forEach((doc) => {
-                        products.push({ sku: doc.id, ...doc.data() });
-                    });
-
+                    documentSnapshots.forEach((doc) => { products.push({ sku: doc.id, ...doc.data() }); });
                     firstVisibleDoc = documentSnapshots.docs[0];
                     lastVisibleDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
                     renderPagination(products.length === 100, currentPage > 1);
@@ -280,9 +266,7 @@
                     <td data-label="Product" class="p-4">
                         <div class="flex items-center gap-4">
                             <img src="${p.imageUrl}" alt="${p.name}" class="h-16 w-16 object-cover rounded-md" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/4a5568?text=N/A';">
-                            <div>
-                                <div class="font-semibold text-gray-900">${p.name}</div>
-                            </div>
+                            <div><div class="font-semibold text-gray-900">${p.name}</div></div>
                         </div>
                     </td>
                     <td data-label="SKU" class="p-4 text-sm text-gray-600">${p.sku}</td>
@@ -290,62 +274,119 @@
                     <td data-label="UPC" class="p-4 text-sm text-gray-600">${p.upc}</td>
                     <td data-label="Available" class="p-4 text-sm text-green-600 font-medium">${p.availability}</td>
                     <td data-label="Price" class="p-4 text-sm text-gray-800 font-semibold text-right">$${p.price.toFixed(2)}</td>
-                    <td data-label="Quantity" class="p-4">
-                        <input type="number" min="0" value="${quantityInCart}" data-sku="${p.sku}" class="w-20 text-center border border-gray-300 rounded-md py-1 px-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </td>
+                    <td data-label="Quantity" class="p-4"><input type="number" min="0" value="${quantityInCart}" data-sku="${p.sku}" class="w-20 text-center border border-gray-300 rounded-md py-1 px-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"></td>
                     <td data-label="Subtotal" class="p-4 text-sm font-bold text-gray-900 text-right" data-subtotal-for="${p.sku}">$${(p.price * quantityInCart).toFixed(2)}</td>
                 `;
                 productTableBody.appendChild(row);
             });
-            // Add event listeners
             document.querySelectorAll('input[data-sku]').forEach(input => {
                 input.addEventListener('input', handleQuantityChange);
             });
         }
 
         function renderPagination(hasNextPage, hasPrevPage) {
-            paginationControls.innerHTML = ''; // Clear existing
-            
+            paginationControls.innerHTML = '';
             const prevDisabled = !hasPrevPage ? 'pointer-events-none opacity-50' : '';
             const nextDisabled = !hasNextPage ? 'pointer-events-none opacity-50' : '';
-
-            paginationControls.innerHTML = `
-                 <div class="flex justify-center mt-4 space-x-4">
-                    <button id="prev-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${prevDisabled}"> Previous Page </button>
-                    <button id="next-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${nextDisabled}"> Next Page </button>
-                </div>`;
-            
-            if (hasPrevPage) {
-                document.getElementById('prev-page-btn').addEventListener('click', () => { currentPage--; fetchProducts('prev'); });
-            }
-            if (hasNextPage) {
-                document.getElementById('next-page-btn').addEventListener('click', () => { currentPage++; fetchProducts('next'); });
-            }
+            paginationControls.innerHTML = `<div class="flex justify-center mt-4 space-x-4"><button id="prev-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${prevDisabled}"> Previous Page </button><button id="next-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${nextDisabled}"> Next Page </button></div>`;
+            if (hasPrevPage) { document.getElementById('prev-page-btn').addEventListener('click', () => { currentPage--; fetchProducts('prev'); }); }
+            if (hasNextPage) { document.getElementById('next-page-btn').addEventListener('click', () => { currentPage++; fetchProducts('next'); }); }
         }
         
         // --- SEARCH EVENT LISTENERS ---
         function performSearch() {
-            const query = searchInput.value.trim();
-            currentSearchQuery = query;
-            lastVisibleDoc = null; // Reset pagination
-            firstVisibleDoc = null;
-            currentPage = 1;
+            currentSearchQuery = searchInput.value.trim();
+            lastVisibleDoc = null; firstVisibleDoc = null; currentPage = 1;
             fetchProducts();
         }
         searchBtn.addEventListener('click', performSearch);
         searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') performSearch(); });
         clearSearchBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            currentSearchQuery = '';
-            lastVisibleDoc = null; // Reset pagination
-            firstVisibleDoc = null;
-            currentPage = 1;
+            searchInput.value = ''; currentSearchQuery = ''; lastVisibleDoc = null; firstVisibleDoc = null; currentPage = 1;
             fetchProducts();
         });
 
+        // --- CART & ORDER LOGIC ---
+        const cartItemsContainer=document.getElementById('cart-items'),cartTotalEl=document.getElementById('cart-total');
+        function handleQuantityChange(e){const t=e.target.dataset.sku,a=parseInt(e.target.value,10)||0;a>0?cart[t]=a:delete cart[t];const n=productCache[t],o=document.querySelector(`[data-subtotal-for="${t}"]`);n&&o&&(o.textContent=`$${(n.price*a).toFixed(2)}`),updateCart()}
+        function updateCart(){const proceedBtn=document.getElementById('proceed-to-order-btn');if(0===Object.keys(cart).length)return cartItemsContainer.innerHTML='<p class="text-gray-500 text-center">Your cart is empty.</p>',cartTotalEl.textContent="$0.00",proceedBtn.disabled=!0,void document.getElementById("cart-item-count").classList.add("hidden");let e=0,t='<div class="space-y-4">',a=0;for(const n in cart){const o=productCache[n],l=cart[n];if(o){const c=o.price*l;e+=c,a+=l,t+=`<div class="flex items-center gap-4"><img src="${o.imageUrl}" class="h-12 w-12 rounded-md object-cover"><div class="flex-grow"><div class="font-semibold">${o.name}</div><div class="text-sm text-gray-500">${l} x $${o.price.toFixed(2)}</div></div><div class="font-semibold">$${c.toFixed(2)}</div></div>`}}t+="</div>",cartItemsContainer.innerHTML=t,cartTotalEl.textContent=`$${e.toFixed(2)}`,proceedBtn.disabled=!1;const n=document.getElementById("cart-item-count");n.textContent=a,n.classList.remove("hidden")}
+        
+        // --- MODAL CONTROLS ---
+        const closeCartBtn = document.getElementById('close-cart-btn');
+        const closeCustomerInfoBtn = document.getElementById('close-customer-info-btn');
+        const proceedToOrderBtn = document.getElementById('proceed-to-order-btn');
+        const submitFinalOrderBtn = document.getElementById('submit-final-order-btn');
+        const statusCloseBtn = document.getElementById('status-close-btn');
 
-        // The rest of the JS code (auth, cart, modals) remains the same...
-        document.getElementById('signin-btn').addEventListener('click',()=>signInWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));document.getElementById('signup-btn').addEventListener('click',()=>createUserWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));const cartModal=document.getElementById('cart-modal'),cartItemsContainer=document.getElementById('cart-items'),cartTotalEl=document.getElementById('cart-total'),submitOrderBtn=document.getElementById('submit-order-btn'),closeCartBtn=document.getElementById('close-cart-btn'),statusModal=document.getElementById('status-modal'),statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message'),statusCloseBtn=document.getElementById('status-close-btn');function handleQuantityChange(e){const t=e.target.dataset.sku,a=parseInt(e.target.value,10)||0;a>0?cart[t]=a:delete cart[t];const n=productCache[t],o=document.querySelector(`[data-subtotal-for="${t}"]`);n&&o&&(o.textContent=`$${(n.price*a).toFixed(2)}`),updateCart()}function updateCart(){if(0===Object.keys(cart).length)return cartItemsContainer.innerHTML='<p class="text-gray-500 text-center">Your cart is empty.</p>',cartTotalEl.textContent="$0.00",submitOrderBtn.disabled=!0,void document.getElementById("cart-item-count").classList.add("hidden");let e=0,t='<div class="space-y-4">',a=0;for(const n in cart){const o=productCache[n],l=cart[n];if(o){const c=o.price*l;e+=c,a+=l,t+=`\n                        <div class="flex items-center gap-4">\n                            <img src="${o.imageUrl}" class="h-12 w-12 rounded-md object-cover">\n                            <div class="flex-grow">\n                                <div class="font-semibold">${o.name}</div>\n                                <div class="text-sm text-gray-500">${l} x $${o.price.toFixed(2)}</div>\n                            </div>\n                            <div class="font-semibold">$${c.toFixed(2)}</div>\n                        </div>\n                    `}}t+="</div>",cartItemsContainer.innerHTML=t,cartTotalEl.textContent=`$${e.toFixed(2)}`,submitOrderBtn.disabled=!1;const n=document.getElementById("cart-item-count");n.textContent=a,n.classList.remove("hidden")}function toggleCart(){cartModal.classList.toggle("hidden"),cartModal.querySelector("div").classList.toggle("translate-x-full")}async function placeOrder(){const e=auth.currentUser;if(!e)return void showStatusModal("Error","You must be signed in to place an order.");submitOrderBtn.disabled=!0,submitOrderBtn.textContent="Submitting...";const t=Object.keys(cart).map(e=>{return{...productCache[e],quantity:cart[e]}}),a=parseFloat(cartTotalEl.textContent.replace("$","")),n={user:{email:e.email,uid:e.uid},items:t,total:a};try{const o=await fetch(ORDER_SUBMIT_URL,{method:"POST",mode:"cors",redirect:"follow",body:JSON.stringify(n),headers:{"Content-Type":"text/plain;charset=utf-8"}}),l=await o.json();if(l.success)showStatusModal("Success!",`Your order #${l.orderNumber} has been submitted.`),toggleCart(),resetOrderState();else throw new Error(l.message)}catch(c){showStatusModal("Order Failed",`There was an issue: ${c.message}`)}finally{submitOrderBtn.disabled=!1,submitOrderBtn.textContent="Proceed to Order"}}function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart()}function showStatusModal(e,t){statusTitle.textContent=e,statusMessage.textContent=t,statusModal.classList.remove("hidden")}function renderHeaderControls(e){headerControls.innerHTML=`\n                <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-100">\n                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>\n                    <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>\n                </button>\n                <div class="flex items-center gap-2">\n                     <span class="text-sm text-gray-600 hidden md:block">${e.email}</span>\n                     <button id="signout-btn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Sign Out</button>\n                </div>\n            `,document.getElementById("signout-btn").addEventListener("click",()=>signOut(auth)),document.getElementById("cart-btn").addEventListener("click",toggleCart),closeCartBtn.addEventListener("click",toggleCart)}submitOrderBtn.addEventListener('click',placeOrder),statusCloseBtn.addEventListener('click',()=>statusModal.classList.add('hidden'));
+        function toggleModal(modal, show) {
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+        
+        cartBtn.addEventListener('click', () => toggleModal(cartModal, true));
+        closeCartBtn.addEventListener('click', () => toggleModal(cartModal, false));
+        proceedToOrderBtn.addEventListener('click', () => {
+            toggleModal(cartModal, false);
+            toggleModal(customerInfoModal, true);
+        });
+        closeCustomerInfoBtn.addEventListener('click', () => toggleModal(customerInfoModal, false));
+        statusCloseBtn.addEventListener('click', () => toggleModal(statusModal, false));
+        
+        // --- FINAL SUBMISSION ---
+        submitFinalOrderBtn.addEventListener('click', async () => {
+            const customer = {
+                name: document.getElementById('cust-name').value.trim(),
+                company: document.getElementById('cust-company').value.trim(),
+                addr1: document.getElementById('cust-addr1').value.trim(),
+                addr2: document.getElementById('cust-addr2').value.trim(),
+                city: document.getElementById('cust-city').value.trim(),
+                state: document.getElementById('cust-state').value.trim(),
+                zip: document.getElementById('cust-zip').value.trim(),
+                country: document.getElementById('cust-country').value.trim(),
+                phone: document.getElementById('cust-phone').value.trim(),
+                email: document.getElementById('cust-email').value.trim(),
+                notes: document.getElementById('cust-notes').value.trim()
+            };
+
+            const requiredFields = ['name', 'company', 'addr1', 'city', 'country', 'phone', 'email'];
+            const missingFields = requiredFields.filter(field => !customer[field]);
+
+            const formError = document.getElementById('form-error');
+            if (missingFields.length > 0) {
+                formError.textContent = `Please fill out all required fields: ${missingFields.join(', ')}.`;
+                formError.classList.remove('hidden');
+                return;
+            }
+            formError.classList.add('hidden');
+
+            submitFinalOrderBtn.disabled = true;
+            submitFinalOrderBtn.textContent = 'Submitting...';
+
+            const orderItems = Object.keys(cart).map(sku => ({ ...productCache[sku], quantity: cart[sku] }));
+            const total = parseFloat(cartTotalEl.textContent.replace('$', ''));
+            const payload = { customer, items: orderItems, total };
+
+            try {
+                const response = await fetch(ORDER_SUBMIT_URL, { method: 'POST', mode: 'cors', redirect: "follow", body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                const result = await response.json();
+                if (result.success) {
+                    toggleModal(customerInfoModal, false);
+                    showStatusModal('Success!', `Your order #${result.orderNumber} has been submitted.`);
+                    resetOrderState();
+                } else { throw new Error(result.message); }
+            } catch (error) {
+                showStatusModal('Order Failed', `There was an issue: ${error.message}`);
+            } finally {
+                submitFinalOrderBtn.disabled = false;
+                submitFinalOrderBtn.textContent = 'Submit Final Order';
+            }
+        });
+
+        function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart(); document.getElementById('customer-form').reset();}
+        function showStatusModal(title, message){const statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message');statusTitle.textContent=title,statusMessage.textContent=message,toggleModal(statusModal,true)}
 
     </script>
 </body>
