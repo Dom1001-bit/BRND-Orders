@@ -59,24 +59,28 @@
             </div>
 
             <!-- Products Table -->
-            <div class="overflow-x-auto bg-white rounded-lg shadow">
-                <table class="w-full table-responsive">
-                    <thead class="bg-gray-100">
-                        <tr>
-                            <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</th>
-                            <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
-                            <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Brand</th>
-                            <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">UPC</th>
-                            <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Available</th>
-                            <th class="p-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
-                            <th class="p-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Quantity</th>
-                            <th class="p-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody id="product-table-body" class="divide-y divide-gray-200">
-                        <!-- Product rows will be inserted here by JS -->
-                    </tbody>
-                </table>
+            <div id="product-area" class="hidden">
+                 <div class="overflow-x-auto bg-white rounded-lg shadow">
+                    <table class="w-full table-responsive">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</th>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Brand</th>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">UPC</th>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Available</th>
+                                <th class="p-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
+                                <th class="p-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Quantity</th>
+                                <th class="p-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="product-table-body" class="divide-y divide-gray-200">
+                            <!-- Product rows will be inserted here by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                 <!-- PAGINATION CONTROLS -->
+                <nav id="pagination-controls" class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4 rounded-b-lg shadow"></nav>
             </div>
         </main>
     </div>
@@ -86,11 +90,9 @@
         <div class="bg-white w-full max-w-lg h-full shadow-xl flex flex-col transform transition-transform translate-x-full">
             <div class="flex justify-between items-center p-6 border-b">
                 <h3 class="text-2xl font-bold">Your Cart</h3>
-                <button id="close-cart-btn" class="text-gray-500 hover:text-gray-800">&times;</button>
+                <button id="close-cart-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
             </div>
-            <div id="cart-items" class="p-6 overflow-y-auto flex-grow">
-                <!-- Cart items will be populated here -->
-            </div>
+            <div id="cart-items" class="p-6 overflow-y-auto flex-grow"></div>
             <div class="p-6 border-t bg-gray-50">
                 <div class="flex justify-between items-center mb-4">
                     <span class="text-lg font-semibold">Grand Total:</span>
@@ -116,7 +118,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
 
-        // === UPDATED FIREBASE CONFIG ===
         const firebaseConfig = {
             apiKey: "AIzaSyAr3Kjlo1lAQzsCQ_RziCdU8pevz2jLsnY",
             authDomain: "brnd-orders-web-app.firebaseapp.com",
@@ -126,8 +127,8 @@
             appId: "1:320827426527:web:df64ee5909d2dfbc7d8b6a"
         };
         
-        // === UPDATED APPS SCRIPT URL ===
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyS7-e9wI5YiWJu39bABJZ-1SdRPAa8tuyoijQhbTyqAdXEBU3j_M_12GRPFq_7ZbE8/exec';
+        // **IMPORTANT**: Get your NEW deployment URL after deploying the updated script.
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwFxPpMoGMDatDA0rMK-BG5gPKEvS956un_jnBzNKuNvf-YJTasiWsrM6wbtoYs5U71/exec'; // Replace with your new URL
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -137,93 +138,50 @@
         const loginView = document.getElementById('login-view');
         const appView = document.getElementById('app-view');
         const headerControls = document.getElementById('header-controls');
+        const productArea = document.getElementById('product-area');
         const productTableBody = document.getElementById('product-table-body');
         const loadingProducts = document.getElementById('loading-products');
+        const paginationControls = document.getElementById('pagination-controls');
         
-        // Cart Elements
-        const cartModal = document.getElementById('cart-modal');
-        const cartItemsContainer = document.getElementById('cart-items');
-        const cartTotalEl = document.getElementById('cart-total');
-        const submitOrderBtn = document.getElementById('submit-order-btn');
-        const closeCartBtn = document.getElementById('close-cart-btn');
-
-        // Status Modal Elements
-        const statusModal = document.getElementById('status-modal');
-        const statusTitle = document.getElementById('status-title');
-        const statusMessage = document.getElementById('status-message');
-        const statusCloseBtn = document.getElementById('status-close-btn');
-
         // --- App State ---
-        let allProducts = [];
+        let allProducts = []; // Will store products for the current page
         let cart = {}; // { sku: quantity }
 
         // --- AUTHENTICATION ---
         onAuthStateChanged(auth, user => {
             if (user) {
-                // User is signed in
                 loginView.classList.add('hidden');
                 appView.classList.remove('hidden');
                 renderHeaderControls(user);
-                fetchProducts();
+                fetchProducts(1); // Fetch the first page on login
             } else {
-                // User is signed out
                 loginView.classList.remove('hidden');
                 appView.classList.add('hidden');
+                productArea.classList.add('hidden');
                 headerControls.innerHTML = '';
                 resetOrderState();
             }
         });
         
-        document.getElementById('signin-btn').addEventListener('click', () => {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            signInWithEmailAndPassword(auth, email, password)
-                .catch(error => {
-                    document.getElementById('login-error').textContent = error.message;
-                    document.getElementById('login-error').classList.remove('hidden');
-                });
-        });
-
-        document.getElementById('signup-btn').addEventListener('click', () => {
-             const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            createUserWithEmailAndPassword(auth, email, password)
-                .catch(error => {
-                    document.getElementById('login-error').textContent = error.message;
-                    document.getElementById('login-error').classList.remove('hidden');
-                });
-        });
-
-        // --- HEADER & CONTROLS ---
-        function renderHeaderControls(user) {
-            headerControls.innerHTML = `
-                <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                    <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
-                </button>
-                <div class="flex items-center gap-2">
-                     <span class="text-sm text-gray-600 hidden md:block">${user.email}</span>
-                     <button id="signout-btn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Sign Out</button>
-                </div>
-            `;
-            document.getElementById('signout-btn').addEventListener('click', () => signOut(auth));
-            document.getElementById('cart-btn').addEventListener('click', toggleCart);
-            closeCartBtn.addEventListener('click', toggleCart);
-        }
-
         // --- PRODUCT FETCHING & DISPLAY ---
-        async function fetchProducts() {
+        async function fetchProducts(page = 1) {
             loadingProducts.classList.remove('hidden');
-            productTableBody.innerHTML = '';
+            productArea.classList.add('hidden');
+            
             try {
-                const response = await fetch(APPS_SCRIPT_URL);
+                const response = await fetch(`${APPS_SCRIPT_URL}?page=${page}&limit=10`);
                 const data = await response.json();
+
                 if (data.success) {
                     allProducts = data.products;
                     displayProducts();
+                    renderPagination(data.pagination);
+                    productArea.classList.remove('hidden');
                 } else { throw new Error(data.message); }
+
             } catch (error) {
                 productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">${error.message}</td></tr>`;
+                productArea.classList.remove('hidden');
             } finally {
                 loadingProducts.classList.add('hidden');
             }
@@ -233,6 +191,7 @@
             productTableBody.innerHTML = '';
             allProducts.forEach(p => {
                 const row = document.createElement('tr');
+                const quantityInCart = cart[p.sku] || 0;
                 row.innerHTML = `
                     <td data-label="Product" class="p-4">
                         <div class="flex items-center gap-4">
@@ -249,9 +208,9 @@
                     <td data-label="Available" class="p-4 text-sm text-green-600 font-medium">${p.availability}</td>
                     <td data-label="Price" class="p-4 text-sm text-gray-800 font-semibold text-right">$${p.price.toFixed(2)}</td>
                     <td data-label="Quantity" class="p-4">
-                        <input type="number" min="0" data-sku="${p.sku}" placeholder="0" class="w-20 text-center border border-gray-300 rounded-md py-1 px-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="number" min="0" value="${quantityInCart}" data-sku="${p.sku}" class="w-20 text-center border border-gray-300 rounded-md py-1 px-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </td>
-                    <td data-label="Subtotal" class="p-4 text-sm font-bold text-gray-900 text-right" data-subtotal-for="${p.sku}">$0.00</td>
+                    <td data-label="Subtotal" class="p-4 text-sm font-bold text-gray-900 text-right" data-subtotal-for="${p.sku}">$${(p.price * quantityInCart).toFixed(2)}</td>
                 `;
                 productTableBody.appendChild(row);
             });
@@ -260,136 +219,61 @@
                 input.addEventListener('input', handleQuantityChange);
             });
         }
-        
-        // --- ORDER & CART LOGIC ---
-        function handleQuantityChange(e) {
-            const sku = e.target.dataset.sku;
-            const quantity = parseInt(e.target.value, 10) || 0;
-            
-            if (quantity > 0) {
-                cart[sku] = quantity;
-            } else {
-                delete cart[sku];
-            }
-            
-            // Update subtotal in table
-            const product = allProducts.find(p => p.sku === sku);
-            const subtotalEl = document.querySelector(`[data-subtotal-for="${sku}"]`);
-            if (product && subtotalEl) {
-                subtotalEl.textContent = `$${(product.price * quantity).toFixed(2)}`;
-            }
-            
-            updateCart();
-        }
 
-        function updateCart() {
-            if (Object.keys(cart).length === 0) {
-                cartItemsContainer.innerHTML = '<p class="text-gray-500 text-center">Your cart is empty.</p>';
-                cartTotalEl.textContent = '$0.00';
-                submitOrderBtn.disabled = true;
-                document.getElementById('cart-item-count').classList.add('hidden');
-                return;
-            }
-            
-            let grandTotal = 0;
-            let cartHtml = '<div class="space-y-4">';
-            let itemCount = 0;
-
-            for (const sku in cart) {
-                const product = allProducts.find(p => p.sku === sku);
-                const quantity = cart[sku];
-                if(product) {
-                    const subtotal = product.price * quantity;
-                    grandTotal += subtotal;
-                    itemCount += quantity;
-                    cartHtml += `
-                        <div class="flex items-center gap-4">
-                            <img src="${product.imageUrl}" class="h-12 w-12 rounded-md object-cover">
-                            <div class="flex-grow">
-                                <div class="font-semibold">${product.name}</div>
-                                <div class="text-sm text-gray-500">${quantity} x $${product.price.toFixed(2)}</div>
-                            </div>
-                            <div class="font-semibold">$${subtotal.toFixed(2)}</div>
-                        </div>
-                    `;
-                }
-            }
-            cartHtml += '</div>';
-            
-            cartItemsContainer.innerHTML = cartHtml;
-            cartTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
-            submitOrderBtn.disabled = false;
-            
-            const cartCountEl = document.getElementById('cart-item-count');
-            cartCountEl.textContent = itemCount;
-            cartCountEl.classList.remove('hidden');
-        }
-
-        function toggleCart() {
-            cartModal.classList.toggle('hidden');
-            cartModal.querySelector('div').classList.toggle('translate-x-full');
-        }
-
-        submitOrderBtn.addEventListener('click', async () => {
-            const user = auth.currentUser;
-            if (!user) {
-                showStatusModal('Error', 'You must be signed in to place an order.');
+        function renderPagination(pagination) {
+            const { currentPage, totalPages, totalItems } = pagination;
+            if (totalPages <= 1) {
+                paginationControls.innerHTML = '';
                 return;
             }
 
-            submitOrderBtn.disabled = true;
-            submitOrderBtn.textContent = 'Submitting...';
-
-            const orderItems = Object.keys(cart).map(sku => {
-                const product = allProducts.find(p => p.sku === sku);
-                return { ...product, quantity: cart[sku] };
-            });
+            const prevDisabled = currentPage === 1 ? 'pointer-events-none opacity-50' : '';
+            const nextDisabled = currentPage === totalPages ? 'pointer-events-none opacity-50' : '';
             
-            const total = parseFloat(cartTotalEl.textContent.replace('$', ''));
+            paginationControls.innerHTML = `
+                 <div class="flex-1 flex justify-between sm:hidden">
+                    <button data-page="${currentPage - 1}" class="prev-btn relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${prevDisabled}"> Previous </button>
+                    <button data-page="${currentPage + 1}" class="next-btn relative inline-flex items-center ml-3 px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${nextDisabled}"> Next </button>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                        Page
+                        <span class="font-medium">${currentPage}</span>
+                        of
+                        <span class="font-medium">${totalPages}</span>
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button data-page="${currentPage - 1}" class="prev-btn relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${prevDisabled}">
+                            <span class="sr-only">Previous</span>
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                        </button>
+                        <button data-page="${currentPage + 1}" class="next-btn relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${nextDisabled}">
+                            <span class="sr-only">Next</span>
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                        </button>
+                        </nav>
+                    </div>
+                </div>
+            `;
 
-            const payload = {
-                user: { email: user.email, uid: user.uid },
-                items: orderItems,
-                total: total
-            };
+            document.querySelectorAll('.prev-btn, .next-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const page = e.currentTarget.dataset.page;
+                    fetchProducts(parseInt(page));
+                })
+            })
+        }
 
-            try {
-                const response = await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'cors',
-                    redirect: "follow",
-                    body: JSON.stringify(payload),
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
-                });
-                const result = await response.json();
-                if (result.success) {
-                    showStatusModal('Success!', `Your order #${result.orderNumber} has been submitted.`);
-                    toggleCart();
-                    resetOrderState();
-                } else { throw new Error(result.message); }
-            } catch (error) {
-                showStatusModal('Order Failed', `There was an issue: ${error.message}`);
-            } finally {
-                submitOrderBtn.disabled = false;
-                submitOrderBtn.textContent = 'Proceed to Order';
-            }
-        });
+        // The rest of the JS code (auth, cart, modals) remains the same as your last version...
+        // Sign-in/Sign-up listeners
+        document.getElementById('signin-btn').addEventListener('click',()=>signInWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));document.getElementById('signup-btn').addEventListener('click',()=>createUserWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));
         
-        function resetOrderState() {
-            cart = {};
-            document.querySelectorAll('input[data-sku]').forEach(input => input.value = '');
-            document.querySelectorAll('[data-subtotal-for]').forEach(el => el.textContent = '$0.00');
-            updateCart();
-        }
+        // Cart and Modal declarations and listeners
+        const cartModal=document.getElementById('cart-modal'),cartItemsContainer=document.getElementById('cart-items'),cartTotalEl=document.getElementById('cart-total'),submitOrderBtn=document.getElementById('submit-order-btn'),closeCartBtn=document.getElementById('close-cart-btn'),statusModal=document.getElementById('status-modal'),statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message'),statusCloseBtn=document.getElementById('status-close-btn');function handleQuantityChange(e){const t=e.target.dataset.sku,a=parseInt(e.target.value,10)||0;a>0?cart[t]=a:delete cart[t];const n=allProducts.find(e=>e.sku===t),o=document.querySelector(`[data-subtotal-for="${t}"]`);n&&o&&(o.textContent=`$${(n.price*a).toFixed(2)}`),updateCart()}function updateCart(){if(0===Object.keys(cart).length)return cartItemsContainer.innerHTML='<p class="text-gray-500 text-center">Your cart is empty.</p>',cartTotalEl.textContent="$0.00",submitOrderBtn.disabled=!0,void document.getElementById("cart-item-count").classList.add("hidden");let e=0,t='<div class="space-y-4">',a=0;for(const n in cart){const o=allProducts.find(e=>e.sku===n),l=cart[n];if(o){const c=o.price*l;e+=c,a+=l,t+=`\n                        <div class="flex items-center gap-4">\n                            <img src="${o.imageUrl}" class="h-12 w-12 rounded-md object-cover">\n                            <div class="flex-grow">\n                                <div class="font-semibold">${o.name}</div>\n                                <div class="text-sm text-gray-500">${l} x $${o.price.toFixed(2)}</div>\n                            </div>\n                            <div class="font-semibold">$${c.toFixed(2)}</div>\n                        </div>\n                    `}}t+="</div>",cartItemsContainer.innerHTML=t,cartTotalEl.textContent=`$${e.toFixed(2)}`,submitOrderBtn.disabled=!1;const n=document.getElementById("cart-item-count");n.textContent=a,n.classList.remove("hidden")}function toggleCart(){cartModal.classList.toggle("hidden"),cartModal.querySelector("div").classList.toggle("translate-x-full")}async function placeOrder(){const e=auth.currentUser;if(!e)return void showStatusModal("Error","You must be signed in to place an order.");submitOrderBtn.disabled=!0,submitOrderBtn.textContent="Submitting...";const t=Object.keys(cart).map(e=>{const t=allProducts.find(t=>t.sku===e);return{...t,quantity:cart[e]}}),a=parseFloat(cartTotalEl.textContent.replace("$","")),n={user:{email:e.email,uid:e.uid},items:t,total:a};try{const o=await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"cors",redirect:"follow",body:JSON.stringify(n),headers:{"Content-Type":"text/plain;charset=utf-8"}}),l=await o.json();if(l.success)showStatusModal("Success!",`Your order #${l.orderNumber} has been submitted.`),toggleCart(),resetOrderState();else throw new Error(l.message)}catch(c){showStatusModal("Order Failed",`There was an issue: ${c.message}`)}finally{submitOrderBtn.disabled=!1,submitOrderBtn.textContent="Proceed to Order"}}function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart()}function showStatusModal(e,t){statusTitle.textContent=e,statusMessage.textContent=t,statusModal.classList.remove("hidden")}function renderHeaderControls(e){headerControls.innerHTML=`\n                <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-100">\n                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>\n                    <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>\n                </button>\n                <div class="flex items-center gap-2">\n                     <span class="text-sm text-gray-600 hidden md:block">${e.email}</span>\n                     <button id="signout-btn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Sign Out</button>\n                </div>\n            `,document.getElementById("signout-btn").addEventListener("click",()=>signOut(auth)),document.getElementById("cart-btn").addEventListener("click",toggleCart),closeCartBtn.addEventListener("click",toggleCart)}submitOrderBtn.addEventListener('click',placeOrder),statusCloseBtn.addEventListener('click',()=>statusModal.classList.add('hidden'));
 
-        function showStatusModal(title, message) {
-            statusTitle.textContent = title;
-            statusMessage.textContent = message;
-            statusModal.classList.remove('hidden');
-        }
-        statusCloseBtn.addEventListener('click', () => {
-            statusModal.classList.add('hidden');
-        });
     </script>
 </body>
 </html>
