@@ -9,11 +9,53 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
     <style>
+        html { scroll-behavior: smooth; }
         body { font-family: 'Inter', sans-serif; }
         h1, h2, h3, h4 { font-family: 'Playfair+Display', serif; }
-        .spinner { border: 4px solid rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #6366f1; animation: spin 1s ease infinite; }
+        
+        /* Spinner */
+        .spinner { border: 4px solid rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #6366f1; animation: spin 1s ease-infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Style for the table on smaller screens */
+
+        /* General Transitions */
+        .transition-all-300 { transition: all 300ms ease-in-out; }
+
+        /* Modal Transitions */
+        .modal-backdrop { transition: opacity 300ms ease-in-out; }
+        .modal-panel { transition: transform 300ms ease-in-out; }
+
+        /* Table Row Flash Animation */
+        @keyframes flash {
+            0% { background-color: rgba(79, 70, 229, 0.2); }
+            100% { background-color: transparent; }
+        }
+        .flash-row { animation: flash 1s ease-out; }
+
+        /* Cart Icon Wiggle Animation */
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(-3deg); }
+            50% { transform: rotate(3deg); }
+        }
+        .wiggle { animation: wiggle 0.5s ease-in-out; }
+
+        /* Loading Skeleton Animation */
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+        .skeleton-shimmer { position: relative; overflow: hidden; background-color: #1f2937; }
+        .skeleton-shimmer::after {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            transform: translateX(-100%);
+            background-image: linear-gradient(90deg, rgba(255, 255, 255, 0) 0, rgba(255, 255, 255, 0.05) 20%, rgba(255, 255, 255, 0.1) 60%, rgba(255, 255, 255, 0));
+            animation: shimmer 2s infinite;
+            content: '';
+        }
+
+        /* Responsive Table */
         @media (max-width: 768px) {
             .table-responsive thead { display: none; }
             .table-responsive tr { display: block; margin-bottom: 1.5rem; border: 1px solid #374151; border-radius: 0.5rem; padding: 1rem; }
@@ -47,8 +89,11 @@
         <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-700">
             <img src="https://i.imgur.com/GQya5pg.png" alt="Brand Logo" class="h-12">
             <div id="header-controls" class="flex items-center gap-4">
-                 <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                 <button id="order-history-btn" class="p-2 rounded-full hover:bg-gray-700 transition-all-300 active:scale-90" title="View Recent Orders">
+                    <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                 </button>
+                 <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-700 transition-all-300 active:scale-90" title="View Cart">
+                    <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                     <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
                 </button>
             </div>
@@ -56,21 +101,24 @@
 
         <!-- Main App View (Ordering System) -->
         <main id="app-view">
-            <div id="loading-products" class="text-center py-12">
-                <div class="spinner mx-auto"></div>
-                <p class="mt-4 text-gray-400">Loading fragrances...</p>
+            <div id="loading-area" class="text-center py-12">
+                <!-- Loading Skeleton -->
+                <div class="space-y-4">
+                    <div class="h-16 skeleton-shimmer rounded-md"></div>
+                    <div class="h-16 skeleton-shimmer rounded-md"></div>
+                    <div class="h-16 skeleton-shimmer rounded-md"></div>
+                    <div class="h-16 skeleton-shimmer rounded-md"></div>
+                </div>
             </div>
 
             <!-- Products Table -->
             <div id="product-area" class="hidden">
                 <!-- SEARCH & FILTER CONTROLS -->
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                    <div class="flex-grow flex gap-2">
+                    <div class="flex-grow">
                         <input type="search" id="search-input" placeholder="Search by Name, Brand, or UPC..." class="form-input w-full">
-                        <button id="search-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 flex-shrink-0">Search</button>
-                        <button id="clear-search-btn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 flex-shrink-0">Clear</button>
                     </div>
-                    <div class="flex items-center gap-2 md:gap-4">
+                    <div class="flex items-center gap-2 md:gap-4 flex-wrap">
                         <select id="brand-filter" class="form-input text-sm"></select>
                         <select id="sort-by" class="form-input text-sm">
                             <option value="sku">Sort: SKU</option>
@@ -88,9 +136,9 @@
                     </div>
                 </div>
 
-                 <div class="overflow-x-auto bg-gray-800 rounded-lg shadow">
+                 <div class="overflow-x-auto bg-gray-800 rounded-lg shadow-lg">
                     <table class="w-full table-responsive">
-                        <thead class="bg-gray-700">
+                        <thead class="bg-gray-700/50 sticky top-0 z-10 backdrop-blur-sm">
                             <tr>
                                 <th class="p-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Product</th>
                                 <th class="p-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">SKU</th>
@@ -108,66 +156,13 @@
                     </table>
                 </div>
                  <!-- PAGINATION CONTROLS -->
-                <nav id="pagination-controls" class="flex items-center justify-between border-t border-gray-700 bg-gray-800 px-4 py-3 sm:px-6 mt-4 rounded-b-lg shadow"></nav>
+                <nav id="pagination-controls" class="flex items-center justify-between bg-gray-800 px-4 py-3 sm:px-6 mt-4 rounded-b-lg shadow-lg"></nav>
             </div>
         </main>
     </div>
 
-    <!-- Cart Modal -->
-    <div id="cart-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex justify-end hidden z-50">
-        <div class="bg-gray-800 w-full max-w-lg h-full shadow-xl flex flex-col transform transition-transform translate-x-full">
-            <div class="flex justify-between items-center p-6 border-b border-gray-700">
-                <h3 class="text-2xl font-bold">Your Cart</h3>
-                <button id="close-cart-btn" class="text-gray-300 hover:text-white text-3xl">&times;</button>
-            </div>
-            <div id="cart-items" class="p-6 overflow-y-auto flex-grow"></div>
-            <div class="p-6 border-t border-gray-700 bg-gray-900">
-                <div class="flex justify-between items-center mb-4">
-                    <span class="text-lg font-semibold">Grand Total:</span>
-                    <span id="cart-total" class="text-2xl font-bold text-indigo-400">$0.00</span>
-                </div>
-                <button id="proceed-to-order-btn" class="w-full bg-green-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400">Proceed to Order</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Customer Info Modal -->
-    <div id="customer-info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-gray-800 w-full max-w-2xl h-full md:h-auto rounded-lg shadow-xl flex flex-col">
-            <div class="flex justify-between items-center p-6 border-b border-gray-700">
-                <h3 class="text-2xl font-bold">Customer Information</h3>
-                <button id="close-customer-info-btn" class="text-gray-300 hover:text-white text-3xl">&times;</button>
-            </div>
-            <div class="p-6 overflow-y-auto">
-                <div id="form-error" class="text-red-500 mb-4 text-sm hidden"></div>
-                <form id="customer-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label for="cust-name" class="block text-sm font-medium text-gray-300">Name <span class="text-red-500">*</span></label><input type="text" id="cust-name" class="form-input mt-1"></div>
-                    <div><label for="cust-company" class="block text-sm font-medium text-gray-300">Company Name <span class="text-red-500">*</span></label><input type="text" id="cust-company" class="form-input mt-1"></div>
-                    <div class="md:col-span-2"><label for="cust-addr1" class="block text-sm font-medium text-gray-300">Address Line 1 <span class="text-red-500">*</span></label><input type="text" id="cust-addr1" class="form-input mt-1"></div>
-                    <div class="md:col-span-2"><label for="cust-addr2" class="block text-sm font-medium text-gray-300">Address Line 2</label><input type="text" id="cust-addr2" class="form-input mt-1"></div>
-                    <div><label for="cust-city" class="block text-sm font-medium text-gray-300">City <span class="text-red-500">*</span></label><input type="text" id="cust-city" class="form-input mt-1"></div>
-                    <div><label for="cust-state" class="block text-sm font-medium text-gray-300">State / Province</label><input type="text" id="cust-state" class="form-input mt-1"></div>
-                    <div><label for="cust-zip" class="block text-sm font-medium text-gray-300">ZIP / Postal Code</label><input type="text" id="cust-zip" class="form-input mt-1"></div>
-                    <div><label for="cust-country" class="block text-sm font-medium text-gray-300">Country <span class="text-red-500">*</span></label><input type="text" id="cust-country" class="form-input mt-1"></div>
-                    <div><label for="cust-phone" class="block text-sm font-medium text-gray-300">Phone <span class="text-red-500">*</span></label><input type="tel" id="cust-phone" class="form-input mt-1"></div>
-                    <div><label for="cust-email" class="block text-sm font-medium text-gray-300">Email <span class="text-red-500">*</span></label><input type="email" id="cust-email" class="form-input mt-1"></div>
-                    <div class="md:col-span-2"><label for="cust-notes" class="block text-sm font-medium text-gray-300">Notes</label><textarea id="cust-notes" rows="3" class="form-input mt-1"></textarea></div>
-                </form>
-            </div>
-             <div class="p-6 border-t border-gray-700 bg-gray-900">
-                <button id="submit-final-order-btn" class="w-full bg-blue-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-blue-700">Submit Final Order</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Submission Status Modal -->
-    <div id="status-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-gray-800 p-8 rounded-lg shadow-xl text-center max-w-sm mx-auto">
-            <h3 id="status-title" class="text-2xl font-bold mb-4"></h3>
-            <p id="status-message" class="text-gray-300 mb-6"></p>
-            <button id="status-close-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700">Close</button>
-        </div>
-    </div>
+    <!-- All Modals -->
+    <div id="modal-container"></div>
 
 
     <!-- Firebase SDKs -->
@@ -194,15 +189,13 @@
 
         // --- DOM Elements ---
         const productTableBody = document.getElementById('product-table-body');
-        const loadingProducts = document.getElementById('loading-products');
+        const loadingArea = document.getElementById('loading-area');
         const paginationControls = document.getElementById('pagination-controls');
         const searchInput = document.getElementById('search-input');
-        const searchBtn = document.getElementById('search-btn');
-        const clearSearchBtn = document.getElementById('clear-search-btn');
-        const cartBtn = document.getElementById('cart-btn');
         const brandFilter = document.getElementById('brand-filter');
         const sortBy = document.getElementById('sort-by');
         const itemsPerPageSelect = document.getElementById('items-per-page');
+        const modalContainer = document.getElementById('modal-container');
         
         // --- App State ---
         let productCache = {}; // Cache for products added to cart but not on current page
@@ -246,7 +239,7 @@
         }
 
         async function fetchProducts(direction = 'next') {
-            loadingProducts.classList.remove('hidden');
+            loadingArea.classList.remove('hidden');
             document.getElementById('product-area').classList.add('hidden');
             
             try {
@@ -309,7 +302,7 @@
                 productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">${error.message}</td></tr>`;
                 document.getElementById('product-area').classList.remove('hidden');
             } finally {
-                loadingProducts.classList.add('hidden');
+                loadingArea.classList.add('hidden');
             }
         }
         
@@ -322,14 +315,15 @@
             products.forEach(p => {
                 productCache[p.sku] = p; // Cache product data
                 const row = document.createElement('tr');
+                row.dataset.sku = p.sku;
                 const quantityInCart = cart[p.sku] || 0;
                 row.innerHTML = `
                     <td data-label="Product" class="p-4">
                         <div class="flex items-center gap-4">
-                            <div class="w-16 h-16 bg-white flex items-center justify-center rounded-md p-1 shadow-sm">
+                            <div class="w-16 h-16 bg-white flex items-center justify-center rounded-md p-1 shadow-sm cursor-pointer product-image-container">
                                 <img src="${p.imageUrl}" alt="${p.name}" class="max-w-full max-h-full object-contain" onerror="this.onerror=null;this.src='https://i.imgur.com/IUBzxFv.jpeg';">
                             </div>
-                            <div><div class="font-semibold text-white">${p.name}</div></div>
+                            <div><div class="font-semibold text-white cursor-pointer product-name-link">${p.name}</div></div>
                         </div>
                     </td>
                     <td data-label="SKU" class="p-4 text-sm text-gray-400">${p.sku}</td>
@@ -337,13 +331,28 @@
                     <td data-label="UPC" class="p-4 text-sm text-gray-400">${p.upc}</td>
                     <td data-label="Available" class="p-4 text-sm text-green-400 font-medium">${p.availability}</td>
                     <td data-label="Price" class="p-4 text-sm text-gray-300 font-semibold text-right">$${p.price.toFixed(2)}</td>
-                    <td data-label="Quantity" class="p-4"><input type="number" min="0" value="${quantityInCart}" data-sku="${p.sku}" class="form-input w-20 text-center"></td>
+                    <td data-label="Quantity" class="p-4">
+                        <div class="flex items-center justify-center gap-1">
+                            <button class="qty-btn minus-btn" data-sku="${p.sku}">-</button>
+                            <input type="number" min="0" value="${quantityInCart}" data-sku="${p.sku}" class="form-input w-16 text-center">
+                            <button class="qty-btn plus-btn" data-sku="${p.sku}">+</button>
+                        </div>
+                    </td>
                     <td data-label="Subtotal" class="p-4 text-sm font-bold text-white text-right" data-subtotal-for="${p.sku}">$${(p.price * quantityInCart).toFixed(2)}</td>
                 `;
                 productTableBody.appendChild(row);
             });
             document.querySelectorAll('input[data-sku]').forEach(input => {
                 input.addEventListener('input', handleQuantityChange);
+            });
+            document.querySelectorAll('.qty-btn').forEach(btn => {
+                btn.addEventListener('click', handleQtyButtonClick);
+            });
+             document.querySelectorAll('.product-name-link, .product-image-container').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    const sku = e.currentTarget.closest('tr').dataset.sku;
+                    showProductDetailModal(sku);
+                });
             });
         }
 
@@ -358,40 +367,25 @@
         
         // --- EVENT LISTENERS ---
         function setupEventListeners() {
-            function performSearch() {
+            function debounce(func, timeout = 300){
+                let timer;
+                return (...args) => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => { func.apply(this, args); }, timeout);
+                };
+            }
+            const debouncedSearch = debounce(() => {
                 currentSearchQuery = searchInput.value.trim();
                 resetAndFetch();
-            }
-            searchBtn.addEventListener('click', performSearch);
-            searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') performSearch(); });
-            clearSearchBtn.addEventListener('click', () => {
-                searchInput.value = '';
-                currentSearchQuery = '';
-                resetAndFetch();
             });
+            searchInput.addEventListener('keyup', debouncedSearch);
 
-            brandFilter.addEventListener('change', () => {
-                currentBrandFilter = brandFilter.value;
-                resetAndFetch();
-            });
-            sortBy.addEventListener('change', () => {
-                currentSortBy = sortBy.value;
-                resetAndFetch();
-            });
-            itemsPerPageSelect.addEventListener('change', () => {
-                itemsPerPage = parseInt(itemsPerPageSelect.value, 10);
-                resetAndFetch();
-            });
-
-            document.getElementById('cart-btn').addEventListener('click', () => toggleCart(true));
-            document.getElementById('close-cart-btn').addEventListener('click', () => toggleCart(false));
-            document.getElementById('proceed-to-order-btn').addEventListener('click', () => {
-                toggleCart(false);
-                toggleModal(document.getElementById('customer-info-modal'), true);
-            });
-            document.getElementById('close-customer-info-btn').addEventListener('click', () => toggleModal(document.getElementById('customer-info-modal'), false));
-            document.getElementById('submit-final-order-btn').addEventListener('click', placeOrder);
-            document.getElementById('status-close-btn').addEventListener('click', () => toggleModal(document.getElementById('status-modal'), false));
+            brandFilter.addEventListener('change', () => { currentBrandFilter = brandFilter.value; resetAndFetch(); });
+            sortBy.addEventListener('change', () => { currentSortBy = sortBy.value; resetAndFetch(); });
+            itemsPerPageSelect.addEventListener('change', () => { itemsPerPage = parseInt(itemsPerPageSelect.value, 10); resetAndFetch(); });
+            
+            document.getElementById('cart-btn').addEventListener('click', () => showCartModal());
+            document.getElementById('order-history-btn').addEventListener('click', () => showOrderHistoryModal());
         }
 
         function resetAndFetch() {
@@ -400,9 +394,19 @@
         }
 
         // --- CART & ORDER LOGIC ---
-        const cartItemsContainer=document.getElementById('cart-items');
-        const cartTotalEl=document.getElementById('cart-total');
-        
+        function handleQtyButtonClick(e) {
+            const sku = e.target.dataset.sku;
+            const input = document.querySelector(`input[data-sku="${sku}"]`);
+            let currentVal = parseInt(input.value) || 0;
+            if (e.target.classList.contains('plus-btn')) {
+                currentVal++;
+            } else if (e.target.classList.contains('minus-btn') && currentVal > 0) {
+                currentVal--;
+            }
+            input.value = currentVal;
+            handleQuantityChange({ target: input });
+        }
+
         function handleQuantityChange(e){
             const sku = e.target.dataset.sku;
             const quantity = parseInt(e.target.value, 10) || 0;
@@ -410,103 +414,156 @@
             const product = productCache[sku];
             const subtotalEl = document.querySelector(`[data-subtotal-for="${sku}"]`);
             if (product && subtotalEl) { subtotalEl.textContent = `$${(product.price * quantity).toFixed(2)}`; }
+            
+            const row = document.querySelector(`tr[data-sku="${sku}"]`);
+            if (row) {
+                row.classList.remove('flash-row');
+                void row.offsetWidth; // Trigger reflow
+                row.classList.add('flash-row');
+            }
+            const cartIcon = document.getElementById('cart-btn');
+            cartIcon.classList.remove('wiggle');
+            void cartIcon.offsetWidth;
+            cartIcon.classList.add('wiggle');
+
             updateCart();
         }
         
         async function updateCart() {
-            const proceedBtn = document.getElementById('proceed-to-order-btn');
             const cartItemCountEl = document.getElementById('cart-item-count');
-
             if (Object.keys(cart).length === 0) {
-                cartItemsContainer.innerHTML = '<p class="text-gray-400 text-center">Your cart is empty.</p>';
-                cartTotalEl.textContent = '$0.00';
-                proceedBtn.disabled = true;
                 cartItemCountEl.classList.add('hidden');
                 return;
             }
-
-            let grandTotal = 0;
-            let cartHtml = '<div class="space-y-4">';
             let itemCount = 0;
-
-            const skusToFetch = Object.keys(cart).filter(sku => !productCache[sku]);
-
-            if (skusToFetch.length > 0) {
-                const fetchPromises = skusToFetch.map(sku => {
-                    const docRef = doc(db, "products", sku);
-                    return getDoc(docRef).then(docSnap => {
-                        if (docSnap.exists()) { productCache[sku] = { sku: docSnap.id, ...docSnap.data() }; }
-                    });
-                });
-                await Promise.all(fetchPromises);
-            }
-            
-            for (const sku in cart) {
-                const product = productCache[sku];
-                const quantity = cart[sku];
-                if (product) {
-                    const subtotal = product.price * quantity;
-                    grandTotal += subtotal;
-                    itemCount += quantity;
-                    cartHtml += `
-                        <div class="flex items-center gap-4">
-                            <img src="${product.imageUrl}" class="h-12 w-12 rounded-md object-contain" onerror="this.onerror=null;this.src='https://i.imgur.com/IUBzxFv.jpeg';">
-                            <div class="flex-grow">
-                                <div class="font-semibold">${product.name}</div>
-                                <div class="text-sm text-gray-400">${quantity} x $${product.price.toFixed(2)}</div>
-                            </div>
-                            <div class="font-semibold">$${subtotal.toFixed(2)}</div>
-                        </div>
-                    `;
-                }
-            }
-            cartHtml += '</div>';
-            
-            cartItemsContainer.innerHTML = cartHtml;
-            cartTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
-            proceedBtn.disabled = false;
-            
+            for (const sku in cart) { itemCount += cart[sku]; }
             cartItemCountEl.textContent = itemCount;
             cartItemCountEl.classList.remove('hidden');
         }
         
         // --- MODAL & THEME CONTROLS ---
-        function toggleCart(show) {
-            const cartModal = document.getElementById('cart-modal');
-            const cartPanel = cartModal.querySelector('div');
-            if (show) {
-                cartModal.classList.remove('hidden');
-                setTimeout(() => cartPanel.classList.remove('translate-x-full'), 20);
-            } else {
-                cartPanel.classList.add('translate-x-full');
-                setTimeout(() => cartModal.classList.add('hidden'), 300);
+        function createModal(id, title, content, footer) {
+            const modalHTML = `
+                <div id="${id}" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center p-4 z-50 opacity-0 transition-all-300">
+                    <div class="modal-panel bg-gray-800 w-full max-w-2xl rounded-lg shadow-xl flex flex-col transform scale-95 transition-all-300">
+                        <div class="flex justify-between items-center p-6 border-b border-gray-700">
+                            <h3 class="text-2xl font-bold">${title}</h3>
+                            <button class="close-modal-btn text-gray-300 hover:text-white text-3xl">&times;</button>
+                        </div>
+                        <div class="p-6 overflow-y-auto">${content}</div>
+                        ${footer ? `<div class="p-6 border-t border-gray-700 bg-gray-900/50">${footer}</div>` : ''}
+                    </div>
+                </div>`;
+            modalContainer.insertAdjacentHTML('beforeend', modalHTML);
+            const modal = document.getElementById(id);
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.modal-panel').classList.remove('scale-95');
+            }, 20);
+            modal.querySelector('.close-modal-btn').addEventListener('click', () => closeModal(id));
+            return modal;
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.add('opacity-0');
+                modal.querySelector('.modal-panel').classList.add('scale-95');
+                setTimeout(() => modal.remove(), 300);
             }
         }
 
-        function toggleModal(modal, show) {
-            if (show) { modal.classList.remove('hidden'); } else { modal.classList.add('hidden'); }
+        async function showCartModal() {
+            let cartContent = '<div class="space-y-4">';
+            if (Object.keys(cart).length === 0) {
+                cartContent = '<p class="text-gray-400 text-center">Your cart is empty.</p>';
+            } else {
+                const skusToFetch = Object.keys(cart).filter(sku => !productCache[sku]);
+                 if (skusToFetch.length > 0) {
+                    const fetchPromises = skusToFetch.map(sku => getDoc(doc(db, "products", sku)).then(docSnap => {
+                        if (docSnap.exists()) productCache[sku] = { sku: docSnap.id, ...docSnap.data() };
+                    }));
+                    await Promise.all(fetchPromises);
+                }
+                let grandTotal = 0;
+                for (const sku in cart) {
+                    const p = productCache[sku];
+                    const q = cart[sku];
+                    if (p) {
+                        const subtotal = p.price * q;
+                        grandTotal += subtotal;
+                        cartContent += `<div class="flex items-center gap-4"><img src="${p.imageUrl}" class="h-12 w-12 rounded-md object-contain" onerror="this.onerror=null;this.src='https://i.imgur.com/IUBzxFv.jpeg';"><div class="flex-grow"><div class="font-semibold">${p.name}</div><div class="text-sm text-gray-400">${q} x $${p.price.toFixed(2)}</div></div><div class="font-semibold">$${subtotal.toFixed(2)}</div></div>`;
+                    }
+                }
+                cartContent += `<hr class="border-gray-600 my-4"><div class="flex justify-end text-xl font-bold">Total: $${grandTotal.toFixed(2)}</div>`;
+            }
+            cartContent += '</div>';
+
+            const cartFooter = `<button id="export-csv-btn" class="w-full mb-2 bg-gray-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-gray-500 transition-all-300 active:scale-95">Export to CSV</button><button id="proceed-to-order-btn" class="w-full bg-green-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-green-700 transition-all-300 active:scale-95" ${Object.keys(cart).length === 0 ? 'disabled' : ''}>Proceed to Order</button>`;
+            const modal = createModal('cart-modal', 'Your Cart', cartContent, cartFooter);
+            modal.querySelector('#proceed-to-order-btn')?.addEventListener('click', () => {
+                closeModal('cart-modal');
+                showCustomerInfoModal();
+            });
+            modal.querySelector('#export-csv-btn')?.addEventListener('click', exportCartToCSV);
+        }
+
+        function showCustomerInfoModal() {
+            const formHTML = `<div id="form-error" class="text-red-500 mb-4 text-sm hidden"></div><form id="customer-form" class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label for="cust-name" class="block text-sm font-medium text-gray-300">Name <span class="text-red-500">*</span></label><input type="text" id="cust-name" class="form-input mt-1"></div><div><label for="cust-company" class="block text-sm font-medium text-gray-300">Company Name <span class="text-red-500">*</span></label><input type="text" id="cust-company" class="form-input mt-1"></div><div class="md:col-span-2"><label for="cust-addr1" class="block text-sm font-medium text-gray-300">Address Line 1 <span class="text-red-500">*</span></label><input type="text" id="cust-addr1" class="form-input mt-1"></div><div class="md:col-span-2"><label for="cust-addr2" class="block text-sm font-medium text-gray-300">Address Line 2</label><input type="text" id="cust-addr2" class="form-input mt-1"></div><div><label for="cust-city" class="block text-sm font-medium text-gray-300">City <span class="text-red-500">*</span></label><input type="text" id="cust-city" class="form-input mt-1"></div><div><label for="cust-state" class="block text-sm font-medium text-gray-300">State / Province</label><input type="text" id="cust-state" class="form-input mt-1"></div><div><label for="cust-zip" class="block text-sm font-medium text-gray-300">ZIP / Postal Code</label><input type="text" id="cust-zip" class="form-input mt-1"></div><div><label for="cust-country" class="block text-sm font-medium text-gray-300">Country <span class="text-red-500">*</span></label><input type="text" id="cust-country" class="form-input mt-1"></div><div><label for="cust-phone" class="block text-sm font-medium text-gray-300">Phone <span class="text-red-500">*</span></label><input type="tel" id="cust-phone" class="form-input mt-1"></div><div><label for="cust-email" class="block text-sm font-medium text-gray-300">Email <span class="text-red-500">*</span></label><input type="email" id="cust-email" class="form-input mt-1"></div><div class="md:col-span-2"><label for="cust-notes" class="block text-sm font-medium text-gray-300">Notes</label><textarea id="cust-notes" rows="3" class="form-input mt-1"></textarea></div></form>`;
+            const formFooter = `<button id="submit-final-order-btn" class="w-full bg-blue-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-blue-700 transition-all-300 active:scale-95">Submit Final Order</button>`;
+            const modal = createModal('customer-info-modal', 'Customer Information', formHTML, formFooter);
+            modal.querySelector('#submit-final-order-btn').addEventListener('click', placeOrder);
+        }
+
+        function showStatusModal(title, message) {
+            const content = `<p class="text-gray-300 mb-6">${message}</p>`;
+            const footer = `<button class="close-modal-btn w-full bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition-all-300 active:scale-95">Close</button>`;
+            createModal('status-modal', title, content, footer);
         }
         
+        function showProductDetailModal(sku) {
+            const p = productCache[sku];
+            if (!p) return;
+            const content = `<div class="flex flex-col md:flex-row gap-6"><div class="md:w-1/2"><img src="${p.imageUrl}" class="w-full rounded-lg shadow-lg" onerror="this.onerror=null;this.src='https://i.imgur.com/IUBzxFv.jpeg';"></div><div class="md:w-1/2 space-y-4"><h4 class="text-2xl font-bold">${p.name}</h4><p><span class="font-semibold">Brand:</span> ${p.brand || 'N/A'}</p><p><span class="font-semibold">UPC:</span> ${p.upc || 'N/A'}</p><p><span class="font-semibold">Availability:</span> <span class="text-green-400">${p.availability}</span></p><p class="text-3xl font-bold text-indigo-400">$${p.price.toFixed(2)}</p></div></div>`;
+            createModal(`detail-${sku}`, 'Product Details', content, '');
+        }
+
+        function showOrderHistoryModal() {
+            const orders = JSON.parse(localStorage.getItem('orderHistory')) || [];
+            let content = '';
+            if (orders.length === 0) {
+                content = '<p class="text-gray-400 text-center">No recent orders found.</p>';
+            } else {
+                content = '<div class="space-y-3">';
+                orders.forEach(order => {
+                    content += `<div class="p-3 bg-gray-700 rounded-md flex justify-between items-center"><div><div class="font-semibold">${order.orderNumber}</div><div class="text-sm text-gray-400">${new Date(order.date).toLocaleString()}</div></div><div class="font-bold text-lg">$${order.total.toFixed(2)}</div></div>`;
+                });
+                content += '</div>';
+            }
+            createModal('order-history-modal', 'Recent Orders', content, '');
+        }
+
         // --- FINAL SUBMISSION ---
         async function placeOrder() {
+            const modal = document.getElementById('customer-info-modal');
             const customer = {
-                name: document.getElementById('cust-name').value.trim(),
-                company: document.getElementById('cust-company').value.trim(),
-                addr1: document.getElementById('cust-addr1').value.trim(),
-                addr2: document.getElementById('cust-addr2').value.trim(),
-                city: document.getElementById('cust-city').value.trim(),
-                state: document.getElementById('cust-state').value.trim(),
-                zip: document.getElementById('cust-zip').value.trim(),
-                country: document.getElementById('cust-country').value.trim(),
-                phone: document.getElementById('cust-phone').value.trim(),
-                email: document.getElementById('cust-email').value.trim(),
-                notes: document.getElementById('cust-notes').value.trim()
+                name: modal.querySelector('#cust-name').value.trim(),
+                company: modal.querySelector('#cust-company').value.trim(),
+                addr1: modal.querySelector('#cust-addr1').value.trim(),
+                addr2: modal.querySelector('#cust-addr2').value.trim(),
+                city: modal.querySelector('#cust-city').value.trim(),
+                state: modal.querySelector('#cust-state').value.trim(),
+                zip: modal.querySelector('#cust-zip').value.trim(),
+                country: modal.querySelector('#cust-country').value.trim(),
+                phone: modal.querySelector('#cust-phone').value.trim(),
+                email: modal.querySelector('#cust-email').value.trim(),
+                notes: modal.querySelector('#cust-notes').value.trim()
             };
 
             const requiredFields = ['name', 'company', 'addr1', 'city', 'country', 'phone', 'email'];
             const missingFields = requiredFields.filter(field => !customer[field]);
 
-            const formError = document.getElementById('form-error');
+            const formError = modal.querySelector('#form-error');
             if (missingFields.length > 0) {
                 formError.textContent = `Please fill out all required fields: ${missingFields.join(', ')}.`;
                 formError.classList.remove('hidden');
@@ -514,33 +571,65 @@
             }
             formError.classList.add('hidden');
 
-            const submitFinalOrderBtn = document.getElementById('submit-final-order-btn');
-            submitFinalOrderBtn.disabled = true;
-            submitFinalOrderBtn.textContent = 'Submitting...';
+            const submitBtn = modal.querySelector('#submit-final-order-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
 
             const orderItems = Object.keys(cart).map(sku => ({ ...productCache[sku], quantity: cart[sku] }));
-            const total = parseFloat(cartTotalEl.textContent.replace('$', ''));
+            const total = Object.values(cart).reduce((sum, qty) => sum + ((productCache[Object.keys(cart).find(key => cart[key] === qty)]?.price || 0) * qty), 0);
             const payload = { customer, items: orderItems, total };
 
             try {
                 const response = await fetch(ORDER_SUBMIT_URL, { method: 'POST', mode: 'cors', redirect: "follow", body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
                 const result = await response.json();
                 if (result.success) {
-                    toggleModal(document.getElementById('customer-info-modal'), false);
+                    closeModal('customer-info-modal');
                     showStatusModal('Success!', `Your order #${result.orderNumber} has been submitted.`);
+                    saveOrderToHistory({ orderNumber: result.orderNumber, date: new Date(), total });
                     resetOrderState();
                 } else { throw new Error(result.message); }
             } catch (error) {
                 showStatusModal('Order Failed', `There was an issue: ${error.message}`);
             } finally {
-                submitFinalOrderBtn.disabled = false;
-                submitFinalOrderBtn.textContent = 'Submit Final Order';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Final Order';
             }
         }
+        
+        // --- HELPER FUNCTIONS ---
+        function saveOrderToHistory(order) {
+            let history = JSON.parse(localStorage.getItem('orderHistory')) || [];
+            history.unshift(order);
+            if (history.length > 5) {
+                history = history.slice(0, 5);
+            }
+            localStorage.setItem('orderHistory', JSON.stringify(history));
+        }
 
-        function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart(); document.getElementById('customer-form').reset();}
-        function showStatusModal(title, message){const statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message');statusTitle.textContent=title,statusMessage.textContent=message,toggleModal(document.getElementById('status-modal'),true)}
+        function exportCartToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "SKU,Name,Brand,Quantity,Unit Price,Subtotal\r\n";
+            let total = 0;
+            for (const sku in cart) {
+                const p = productCache[sku];
+                const q = cart[sku];
+                if (p) {
+                    const subtotal = p.price * q;
+                    total += subtotal;
+                    csvContent += `${p.sku},"${p.name.replace(/"/g, '""')}","${(p.brand || '').replace(/"/g, '""')}",${q},${p.price},${subtotal}\r\n`;
+                }
+            }
+            csvContent += `,,,,Total,${total}\r\n`;
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `order_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
 
+        function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart(); document.getElementById('customer-form')?.reset();}
     </script>
 </body>
 </html>
