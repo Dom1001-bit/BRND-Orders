@@ -20,9 +20,15 @@
         /* General Transitions */
         .transition-all-300 { transition: all 300ms ease-in-out; }
 
-        /* Modal Transitions */
+        /* Modal Transitions & Glassy Effect */
         .modal-backdrop { transition: opacity 300ms ease-in-out; }
-        .modal-panel { transition: transform 300ms ease-in-out; }
+        .modal-panel { 
+            transition: transform 300ms ease-in-out;
+            background-color: rgba(31, 41, 55, 0.5); /* Semi-transparent dark background */
+            backdrop-filter: blur(12px); /* The "glass" effect */
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
         /* Table Row Flash Animation */
         @keyframes flash {
@@ -115,8 +121,9 @@
             <div id="product-area" class="hidden">
                 <!-- SEARCH & FILTER CONTROLS -->
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                    <div class="flex-grow">
+                    <div class="flex-grow flex gap-2">
                         <input type="search" id="search-input" placeholder="Search by Name, Brand, or UPC..." class="form-input w-full">
+                        <button id="search-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 flex-shrink-0 transition-all-300 active:scale-95">Search</button>
                     </div>
                     <div class="flex items-center gap-2 md:gap-4 flex-wrap">
                         <select id="brand-filter" class="form-input text-sm"></select>
@@ -161,7 +168,7 @@
         </main>
     </div>
 
-    <!-- All Modals -->
+    <!-- All Modals will be injected here -->
     <div id="modal-container"></div>
 
 
@@ -367,18 +374,21 @@
         
         // --- EVENT LISTENERS ---
         function setupEventListeners() {
-            function debounce(func, timeout = 300){
-                let timer;
-                return (...args) => {
-                    clearTimeout(timer);
-                    timer = setTimeout(() => { func.apply(this, args); }, timeout);
-                };
-            }
-            const debouncedSearch = debounce(() => {
+            document.getElementById('search-btn').addEventListener('click', () => {
                 currentSearchQuery = searchInput.value.trim();
                 resetAndFetch();
             });
-            searchInput.addEventListener('keyup', debouncedSearch);
+            searchInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    currentSearchQuery = searchInput.value.trim();
+                    resetAndFetch();
+                }
+            });
+            document.getElementById('clear-search-btn').addEventListener('click', () => {
+                searchInput.value = '';
+                currentSearchQuery = '';
+                resetAndFetch();
+            });
 
             brandFilter.addEventListener('change', () => { currentBrandFilter = brandFilter.value; resetAndFetch(); });
             sortBy.addEventListener('change', () => { currentSortBy = sortBy.value; resetAndFetch(); });
@@ -445,10 +455,10 @@
         function createModal(id, title, content, footer) {
             const modalHTML = `
                 <div id="${id}" class="modal-backdrop fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center p-4 z-50 opacity-0 transition-all-300">
-                    <div class="modal-panel bg-gray-800 w-full max-w-2xl rounded-lg shadow-xl flex flex-col transform scale-95 transition-all-300">
+                    <div class="modal-panel w-full max-w-2xl rounded-lg shadow-xl flex flex-col transform scale-95 transition-all-300">
                         <div class="flex justify-between items-center p-6 border-b border-gray-700">
                             <h3 class="text-2xl font-bold">${title}</h3>
-                            <button class="close-modal-btn text-gray-300 hover:text-white text-3xl">&times;</button>
+                            <button class="close-modal-btn text-gray-300 hover:text-white text-3xl transition-transform hover:scale-110">&times;</button>
                         </div>
                         <div class="p-6 overflow-y-auto">${content}</div>
                         ${footer ? `<div class="p-6 border-t border-gray-700 bg-gray-900/50">${footer}</div>` : ''}
@@ -492,7 +502,7 @@
                     if (p) {
                         const subtotal = p.price * q;
                         grandTotal += subtotal;
-                        cartContent += `<div class="flex items-center gap-4"><img src="${p.imageUrl}" class="h-12 w-12 rounded-md object-contain" onerror="this.onerror=null;this.src='https://i.imgur.com/IUBzxFv.jpeg';"><div class="flex-grow"><div class="font-semibold">${p.name}</div><div class="text-sm text-gray-400">${q} x $${p.price.toFixed(2)}</div></div><div class="font-semibold">$${subtotal.toFixed(2)}</div></div>`;
+                        cartContent += `<div class="flex items-center gap-4"><img src="${p.imageUrl}" class="h-12 w-12 rounded-md object-contain bg-white p-1" onerror="this.onerror=null;this.src='https://i.imgur.com/IUBzxFv.jpeg';"><div class="flex-grow"><div class="font-semibold">${p.name}</div><div class="text-sm text-gray-400">${q} x $${p.price.toFixed(2)}</div></div><div class="font-semibold">$${subtotal.toFixed(2)}</div></div>`;
                     }
                 }
                 cartContent += `<hr class="border-gray-600 my-4"><div class="flex justify-end text-xl font-bold">Total: $${grandTotal.toFixed(2)}</div>`;
@@ -576,7 +586,11 @@
             submitBtn.textContent = 'Submitting...';
 
             const orderItems = Object.keys(cart).map(sku => ({ ...productCache[sku], quantity: cart[sku] }));
-            const total = Object.values(cart).reduce((sum, qty) => sum + ((productCache[Object.keys(cart).find(key => cart[key] === qty)]?.price || 0) * qty), 0);
+            const total = Object.values(cart).reduce((sum, qty, index) => {
+                const sku = Object.keys(cart)[index];
+                const price = productCache[sku]?.price || 0;
+                return sum + (price * qty);
+            }, 0);
             const payload = { customer, items: orderItems, total };
 
             try {
@@ -630,6 +644,7 @@
         }
 
         function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart(); document.getElementById('customer-form')?.reset();}
+
     </script>
 </body>
 </html>
