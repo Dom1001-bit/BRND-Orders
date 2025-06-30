@@ -153,7 +153,8 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        import { getFirestore, collection, query, where, orderBy, limit, getDocs, startAfter, endBefore, limitToLast } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+        // **CORRECTED IMPORT**: Added 'doc' and 'getDoc' for fetching individual products for the cart.
+        import { getFirestore, collection, query, where, orderBy, limit, getDocs, startAfter, endBefore, limitToLast, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         // === IMPORTANT: PASTE YOUR NEWEST FIREBASE CONFIG HERE ===
         const firebaseConfig = {
@@ -245,7 +246,7 @@
 
             } catch (error) {
                 console.error("Error fetching from Firestore: ", error);
-                productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">Error: ${error.message}</td></tr>`;
+                productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">${error.message}</td></tr>`;
                 productArea.classList.remove('hidden');
             } finally {
                 loadingProducts.classList.add('hidden');
@@ -307,9 +308,87 @@
         });
 
         // --- CART & ORDER LOGIC ---
-        const cartItemsContainer=document.getElementById('cart-items'),cartTotalEl=document.getElementById('cart-total');
-        function handleQuantityChange(e){const t=e.target.dataset.sku,a=parseInt(e.target.value,10)||0;a>0?cart[t]=a:delete cart[t];const n=productCache[t],o=document.querySelector(`[data-subtotal-for="${t}"]`);n&&o&&(o.textContent=`$${(n.price*a).toFixed(2)}`),updateCart()}
-        function updateCart(){const proceedBtn=document.getElementById('proceed-to-order-btn');if(0===Object.keys(cart).length)return cartItemsContainer.innerHTML='<p class="text-gray-500 text-center">Your cart is empty.</p>',cartTotalEl.textContent="$0.00",proceedBtn.disabled=!0,void document.getElementById("cart-item-count").classList.add("hidden");let e=0,t='<div class="space-y-4">',a=0;for(const n in cart){const o=productCache[n],l=cart[n];if(o){const c=o.price*l;e+=c,a+=l,t+=`<div class="flex items-center gap-4"><img src="${o.imageUrl}" class="h-12 w-12 rounded-md object-cover"><div class="flex-grow"><div class="font-semibold">${o.name}</div><div class="text-sm text-gray-500">${l} x $${o.price.toFixed(2)}</div></div><div class="font-semibold">$${c.toFixed(2)}</div></div>`}}t+="</div>",cartItemsContainer.innerHTML=t,cartTotalEl.textContent=`$${e.toFixed(2)}`,proceedBtn.disabled=!1;const n=document.getElementById("cart-item-count");n.textContent=a,n.classList.remove("hidden")}
+        const cartItemsContainer=document.getElementById('cart-items');
+        const cartTotalEl=document.getElementById('cart-total');
+        
+        function handleQuantityChange(e){
+            const sku = e.target.dataset.sku;
+            const quantity = parseInt(e.target.value, 10) || 0;
+            
+            if (quantity > 0) {
+                cart[sku] = quantity;
+            } else {
+                delete cart[sku];
+            }
+            
+            const product = productCache[sku];
+            const subtotalEl = document.querySelector(`[data-subtotal-for="${sku}"]`);
+            if (product && subtotalEl) {
+                subtotalEl.textContent = `$${(product.price * quantity).toFixed(2)}`;
+            }
+            
+            updateCart();
+        }
+        
+        // **CORRECTED LOGIC**: This function now fetches product details from Firestore if they aren't cached.
+        async function updateCart() {
+            const proceedBtn = document.getElementById('proceed-to-order-btn');
+            const cartItemCountEl = document.getElementById('cart-item-count');
+
+            if (Object.keys(cart).length === 0) {
+                cartItemsContainer.innerHTML = '<p class="text-gray-500 text-center">Your cart is empty.</p>';
+                cartTotalEl.textContent = '$0.00';
+                proceedBtn.disabled = true;
+                cartItemCountEl.classList.add('hidden');
+                return;
+            }
+
+            let grandTotal = 0;
+            let cartHtml = '<div class="space-y-4">';
+            let itemCount = 0;
+
+            const skusToFetch = Object.keys(cart).filter(sku => !productCache[sku]);
+
+            if (skusToFetch.length > 0) {
+                const fetchPromises = skusToFetch.map(sku => {
+                    const docRef = doc(db, "products", sku);
+                    return getDoc(docRef).then(docSnap => {
+                        if (docSnap.exists()) {
+                            productCache[sku] = { sku: docSnap.id, ...docSnap.data() };
+                        }
+                    });
+                });
+                await Promise.all(fetchPromises);
+            }
+            
+            for (const sku in cart) {
+                const product = productCache[sku];
+                const quantity = cart[sku];
+                if (product) {
+                    const subtotal = product.price * quantity;
+                    grandTotal += subtotal;
+                    itemCount += quantity;
+                    cartHtml += `
+                        <div class="flex items-center gap-4">
+                            <img src="${product.imageUrl}" class="h-12 w-12 rounded-md object-cover" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/4a5568?text=N/A';">
+                            <div class="flex-grow">
+                                <div class="font-semibold">${product.name}</div>
+                                <div class="text-sm text-gray-500">${quantity} x $${product.price.toFixed(2)}</div>
+                            </div>
+                            <div class="font-semibold">$${subtotal.toFixed(2)}</div>
+                        </div>
+                    `;
+                }
+            }
+            cartHtml += '</div>';
+            
+            cartItemsContainer.innerHTML = cartHtml;
+            cartTotalEl.textContent = `$${grandTotal.toFixed(2)}`;
+            proceedBtn.disabled = false;
+            
+            cartItemCountEl.textContent = itemCount;
+            cartItemCountEl.classList.remove('hidden');
+        }
         
         // --- MODAL CONTROLS ---
         const closeCartBtn = document.getElementById('close-cart-btn');
