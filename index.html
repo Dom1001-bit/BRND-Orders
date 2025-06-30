@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fragrance Order Portal</title>
+    <title>BRND Direct Order Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +17,7 @@
         @media (max-width: 768px) {
             .table-responsive thead { display: none; }
             .table-responsive tr { display: block; margin-bottom: 1.5rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; }
+            .dark .table-responsive tr { border-color: #374151; }
             .table-responsive td { display: flex; justify-content: space-between; align-items: center; text-align: right; padding: 0.5rem 0; }
             .table-responsive td::before { content: attr(data-label); font-weight: 600; text-align: left; padding-right: 1rem; }
             .table-responsive td:nth-of-type(1) { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
@@ -29,6 +30,11 @@
             outline: none;
             transition: ring 0.2s;
         }
+        .dark .form-input {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #d1d5db;
+        }
         .form-input:focus {
             ring: 2px;
             ring-color: #4f46e5;
@@ -36,16 +42,20 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
     <!-- Main Container -->
     <div id="app-container" class="container mx-auto p-4 md:p-8">
 
         <!-- Header -->
-        <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-200">
+        <header class="flex justify-between items-center mb-8 pb-4 border-b border-gray-200 dark:border-gray-700">
             <img src="https://i.imgur.com/GQya5pg.png" alt="Brand Logo" class="h-12">
             <div id="header-controls" class="flex items-center gap-4">
-                 <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-100">
+                 <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg id="theme-icon-light" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <svg id="theme-icon-dark" class="h-6 w-6 text-gray-600 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                 </button>
+                 <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                     <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>
                 </button>
@@ -56,55 +66,82 @@
         <main id="app-view">
             <div id="loading-products" class="text-center py-12">
                 <div class="spinner mx-auto"></div>
-                <p class="mt-4 text-gray-600">Loading fragrances...</p>
+                <p class="mt-4 text-gray-600 dark:text-gray-400">Loading fragrances...</p>
             </div>
 
             <!-- Products Table -->
             <div id="product-area" class="hidden">
-                <!-- SEARCH CONTROLS -->
-                <div class="mb-4 flex gap-2">
-                    <input type="search" id="search-input" placeholder="Search by Name, Brand, or UPC..." class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button id="search-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700">Search</button>
-                    <button id="clear-search-btn" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600">Clear</button>
+                <!-- SEARCH & FILTER CONTROLS -->
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="lg:col-span-2">
+                        <input type="search" id="search-input" placeholder="Search by Name, Brand, or UPC..." class="form-input h-full">
+                    </div>
+                    <button id="search-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 h-full">Search</button>
+                    <button id="clear-search-btn" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 h-full">Clear</button>
+                </div>
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="brand-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Brand</label>
+                        <select id="brand-filter" class="form-input mt-1"></select>
+                    </div>
+                    <div>
+                        <label for="sort-by" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sort by</label>
+                        <select id="sort-by" class="form-input mt-1">
+                            <option value="sku">SKU</option>
+                            <option value="name_lowercase">Item Name</option>
+                            <option value="brand_lowercase">Brand</option>
+                            <option value="upc">UPC</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="items-per-page" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Items per Page</label>
+                        <select id="items-per-page" class="form-input mt-1">
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100" selected>100</option>
+                            <option value="200">200</option>
+                        </select>
+                    </div>
                 </div>
 
-                 <div class="overflow-x-auto bg-white rounded-lg shadow">
+                 <div class="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg shadow">
                     <table class="w-full table-responsive">
-                        <thead class="bg-gray-100">
+                        <thead class="bg-gray-100 dark:bg-gray-700">
                             <tr>
-                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Product</th>
-                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">SKU</th>
-                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Brand</th>
-                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">UPC</th>
-                                <th class="p-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Available</th>
-                                <th class="p-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Price</th>
-                                <th class="p-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Quantity</th>
-                                <th class="p-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Subtotal</th>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Product</th>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">SKU</th>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Brand</th>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">UPC</th>
+                                <th class="p-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Available</th>
+                                <th class="p-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Price</th>
+                                <th class="p-4 text-center text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Quantity</th>
+                                <th class="p-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Subtotal</th>
                             </tr>
                         </thead>
-                        <tbody id="product-table-body" class="divide-y divide-gray-200">
+                        <tbody id="product-table-body" class="divide-y divide-gray-200 dark:divide-gray-700">
                             <!-- Product rows will be inserted here by JS -->
                         </tbody>
                     </table>
                 </div>
                  <!-- PAGINATION CONTROLS -->
-                <nav id="pagination-controls" class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4 rounded-b-lg shadow"></nav>
+                <nav id="pagination-controls" class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 sm:px-6 mt-4 rounded-b-lg shadow"></nav>
             </div>
         </main>
     </div>
 
     <!-- Cart Modal -->
     <div id="cart-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex justify-end hidden z-50">
-        <div class="bg-white w-full max-w-lg h-full shadow-xl flex flex-col transform transition-transform translate-x-full">
-            <div class="flex justify-between items-center p-6 border-b">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-lg h-full shadow-xl flex flex-col transform transition-transform translate-x-full">
+            <div class="flex justify-between items-center p-6 border-b dark:border-gray-700">
                 <h3 class="text-2xl font-bold">Your Cart</h3>
-                <button id="close-cart-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+                <button id="close-cart-btn" class="text-gray-500 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white text-3xl">&times;</button>
             </div>
             <div id="cart-items" class="p-6 overflow-y-auto flex-grow"></div>
-            <div class="p-6 border-t bg-gray-50">
+            <div class="p-6 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <div class="flex justify-between items-center mb-4">
                     <span class="text-lg font-semibold">Grand Total:</span>
-                    <span id="cart-total" class="text-2xl font-bold text-indigo-600">$0.00</span>
+                    <span id="cart-total" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">$0.00</span>
                 </div>
                 <button id="proceed-to-order-btn" class="w-full bg-green-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-green-700 disabled:bg-gray-400">Proceed to Order</button>
             </div>
@@ -113,28 +150,28 @@
     
     <!-- Customer Info Modal -->
     <div id="customer-info-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center hidden z-50 p-4">
-        <div class="bg-white w-full max-w-2xl h-full md:h-auto rounded-lg shadow-xl flex flex-col">
-            <div class="flex justify-between items-center p-6 border-b">
+        <div class="bg-white dark:bg-gray-800 w-full max-w-2xl h-full md:h-auto rounded-lg shadow-xl flex flex-col">
+            <div class="flex justify-between items-center p-6 border-b dark:border-gray-700">
                 <h3 class="text-2xl font-bold">Customer Information</h3>
-                <button id="close-customer-info-btn" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+                <button id="close-customer-info-btn" class="text-gray-500 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white text-3xl">&times;</button>
             </div>
             <div class="p-6 overflow-y-auto">
                 <div id="form-error" class="text-red-500 mb-4 text-sm hidden"></div>
                 <form id="customer-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label for="cust-name" class="block text-sm font-medium text-gray-700">Name <span class="text-red-500">*</span></label><input type="text" id="cust-name" class="form-input mt-1"></div>
-                    <div><label for="cust-company" class="block text-sm font-medium text-gray-700">Company Name <span class="text-red-500">*</span></label><input type="text" id="cust-company" class="form-input mt-1"></div>
-                    <div class="md:col-span-2"><label for="cust-addr1" class="block text-sm font-medium text-gray-700">Address Line 1 <span class="text-red-500">*</span></label><input type="text" id="cust-addr1" class="form-input mt-1"></div>
-                    <div class="md:col-span-2"><label for="cust-addr2" class="block text-sm font-medium text-gray-700">Address Line 2</label><input type="text" id="cust-addr2" class="form-input mt-1"></div>
-                    <div><label for="cust-city" class="block text-sm font-medium text-gray-700">City <span class="text-red-500">*</span></label><input type="text" id="cust-city" class="form-input mt-1"></div>
-                    <div><label for="cust-state" class="block text-sm font-medium text-gray-700">State / Province</label><input type="text" id="cust-state" class="form-input mt-1"></div>
-                    <div><label for="cust-zip" class="block text-sm font-medium text-gray-700">ZIP / Postal Code</label><input type="text" id="cust-zip" class="form-input mt-1"></div>
-                    <div><label for="cust-country" class="block text-sm font-medium text-gray-700">Country <span class="text-red-500">*</span></label><input type="text" id="cust-country" class="form-input mt-1"></div>
-                    <div><label for="cust-phone" class="block text-sm font-medium text-gray-700">Phone <span class="text-red-500">*</span></label><input type="tel" id="cust-phone" class="form-input mt-1"></div>
-                    <div><label for="cust-email" class="block text-sm font-medium text-gray-700">Email <span class="text-red-500">*</span></label><input type="email" id="cust-email" class="form-input mt-1"></div>
-                    <div class="md:col-span-2"><label for="cust-notes" class="block text-sm font-medium text-gray-700">Notes</label><textarea id="cust-notes" rows="3" class="form-input mt-1"></textarea></div>
+                    <div><label for="cust-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name <span class="text-red-500">*</span></label><input type="text" id="cust-name" class="form-input mt-1"></div>
+                    <div><label for="cust-company" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Company Name <span class="text-red-500">*</span></label><input type="text" id="cust-company" class="form-input mt-1"></div>
+                    <div class="md:col-span-2"><label for="cust-addr1" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Address Line 1 <span class="text-red-500">*</span></label><input type="text" id="cust-addr1" class="form-input mt-1"></div>
+                    <div class="md:col-span-2"><label for="cust-addr2" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Address Line 2</label><input type="text" id="cust-addr2" class="form-input mt-1"></div>
+                    <div><label for="cust-city" class="block text-sm font-medium text-gray-700 dark:text-gray-300">City <span class="text-red-500">*</span></label><input type="text" id="cust-city" class="form-input mt-1"></div>
+                    <div><label for="cust-state" class="block text-sm font-medium text-gray-700 dark:text-gray-300">State / Province</label><input type="text" id="cust-state" class="form-input mt-1"></div>
+                    <div><label for="cust-zip" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ZIP / Postal Code</label><input type="text" id="cust-zip" class="form-input mt-1"></div>
+                    <div><label for="cust-country" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Country <span class="text-red-500">*</span></label><input type="text" id="cust-country" class="form-input mt-1"></div>
+                    <div><label for="cust-phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone <span class="text-red-500">*</span></label><input type="tel" id="cust-phone" class="form-input mt-1"></div>
+                    <div><label for="cust-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email <span class="text-red-500">*</span></label><input type="email" id="cust-email" class="form-input mt-1"></div>
+                    <div class="md:col-span-2"><label for="cust-notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label><textarea id="cust-notes" rows="3" class="form-input mt-1"></textarea></div>
                 </form>
             </div>
-             <div class="p-6 border-t bg-gray-50">
+             <div class="p-6 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <button id="submit-final-order-btn" class="w-full bg-blue-600 text-white text-lg font-semibold py-3 rounded-md hover:bg-blue-700">Submit Final Order</button>
             </div>
         </div>
@@ -142,9 +179,9 @@
 
     <!-- Submission Status Modal -->
     <div id="status-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-sm mx-auto">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl text-center max-w-sm mx-auto">
             <h3 id="status-title" class="text-2xl font-bold mb-4"></h3>
-            <p id="status-message" class="text-gray-600 mb-6"></p>
+            <p id="status-message" class="text-gray-600 dark:text-gray-300 mb-6"></p>
             <button id="status-close-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700">Close</button>
         </div>
     </div>
@@ -173,9 +210,6 @@
         const db = getFirestore(app);
 
         // --- DOM Elements ---
-        const appView = document.getElementById('app-view');
-        const headerControls = document.getElementById('header-controls');
-        const productArea = document.getElementById('product-area');
         const productTableBody = document.getElementById('product-table-body');
         const loadingProducts = document.getElementById('loading-products');
         const paginationControls = document.getElementById('pagination-controls');
@@ -183,11 +217,9 @@
         const searchBtn = document.getElementById('search-btn');
         const clearSearchBtn = document.getElementById('clear-search-btn');
         const cartBtn = document.getElementById('cart-btn');
-        
-        // Modals
-        const cartModal = document.getElementById('cart-modal');
-        const customerInfoModal = document.getElementById('customer-info-modal');
-        const statusModal = document.getElementById('status-modal');
+        const brandFilter = document.getElementById('brand-filter');
+        const sortBy = document.getElementById('sort-by');
+        const itemsPerPageSelect = document.getElementById('items-per-page');
         
         // --- App State ---
         let productCache = {}; // Cache for products added to cart but not on current page
@@ -196,18 +228,50 @@
         let lastVisibleDoc = null; // For Firestore pagination (Next page)
         let firstVisibleDoc = null; // For Firestore pagination (Previous page)
         let currentPage = 1;
+        let itemsPerPage = 100;
+        let currentSortBy = 'sku';
+        let currentBrandFilter = '';
 
         // --- INITIALIZATION ---
-        fetchProducts(); // Fetch the first page on load
+        function initializeApp() {
+            fetchProducts(); 
+            populateBrandFilter();
+            setupEventListeners();
+            initTheme();
+        }
+        initializeApp();
         
-        // --- PRODUCT FETCHING (FIRESTORE) ---
+        // --- PRODUCT & BRAND FETCHING (FIRESTORE) ---
+        async function populateBrandFilter() {
+            const productsRef = collection(db, "products");
+            const q = query(productsRef, orderBy("brand"));
+            const querySnapshot = await getDocs(q);
+            const brands = new Set();
+            querySnapshot.forEach(doc => {
+                const brand = doc.data().brand;
+                if (brand) {
+                    brands.add(brand);
+                }
+            });
+
+            brandFilter.innerHTML = '<option value="">All Brands</option>';
+            brands.forEach(brand => {
+                const option = document.createElement('option');
+                option.value = brand;
+                option.textContent = brand;
+                brandFilter.appendChild(option);
+            });
+        }
+
         async function fetchProducts(direction = 'next') {
             loadingProducts.classList.remove('hidden');
-            productArea.classList.add('hidden');
+            document.getElementById('product-area').classList.add('hidden');
             
             try {
                 const productsRef = collection(db, "products");
                 let products = [];
+                let hasNext = false;
+                let hasPrev = currentPage > 1;
 
                 if (currentSearchQuery) {
                     // --- MULTI-FIELD SEARCH LOGIC ---
@@ -225,28 +289,43 @@
                     products = Array.from(foundProducts.values());
                     renderPagination(false, false); 
                 } else {
-                    // --- PAGINATION LOGIC (NO SEARCH) ---
+                    // --- PAGINATION & FILTER LOGIC ---
                     let q;
-                    const baseQuery = [orderBy("sku"), limit(100)];
+                    let baseQuery = [orderBy(currentSortBy), limit(itemsPerPage)];
+
+                    if (currentBrandFilter) {
+                        baseQuery.unshift(where("brand", "==", currentBrandFilter));
+                    }
+
                     if (direction === 'next' && lastVisibleDoc) { baseQuery.push(startAfter(lastVisibleDoc)); } 
-                    else if (direction === 'prev' && firstVisibleDoc) { baseQuery.push(endBefore(firstVisibleDoc), limitToLast(100)); }
+                    else if (direction === 'prev' && firstVisibleDoc) {
+                        baseQuery = [orderBy(currentSortBy, "desc"), limit(itemsPerPage)];
+                        if (currentBrandFilter) { baseQuery.unshift(where("brand", "==", currentBrandFilter)); }
+                        baseQuery.push(startAfter(firstVisibleDoc));
+                    }
                     
                     q = query(productsRef, ...baseQuery);
                     const documentSnapshots = await getDocs(q);
 
                     documentSnapshots.forEach((doc) => { products.push({ sku: doc.id, ...doc.data() }); });
+                    
+                    if (direction === 'prev') {
+                        products.reverse(); // Reverse the array to get correct order
+                    }
+
                     firstVisibleDoc = documentSnapshots.docs[0];
                     lastVisibleDoc = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-                    renderPagination(products.length === 100, currentPage > 1);
+                    hasNext = products.length === itemsPerPage;
+                    renderPagination(hasNext, hasPrev);
                 }
 
                 displayProducts(products);
-                productArea.classList.remove('hidden');
+                document.getElementById('product-area').classList.remove('hidden');
 
             } catch (error) {
                 console.error("Error fetching from Firestore: ", error);
                 productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500">${error.message}</td></tr>`;
-                productArea.classList.remove('hidden');
+                document.getElementById('product-area').classList.remove('hidden');
             } finally {
                 loadingProducts.classList.add('hidden');
             }
@@ -255,7 +334,7 @@
         function displayProducts(products) {
             productTableBody.innerHTML = '';
             if (products.length === 0) {
-                 productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500">No products found.</td></tr>`;
+                 productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500 dark:text-gray-400">No products found.</td></tr>`;
                  return;
             }
             products.forEach(p => {
@@ -265,17 +344,19 @@
                 row.innerHTML = `
                     <td data-label="Product" class="p-4">
                         <div class="flex items-center gap-4">
-                            <img src="${p.imageUrl}" alt="${p.name}" class="h-16 w-16 object-cover rounded-md" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/4a5568?text=N/A';">
-                            <div><div class="font-semibold text-gray-900">${p.name}</div></div>
+                            <div class="w-16 h-16 bg-white flex items-center justify-center rounded-md p-1 shadow-sm">
+                                <img src="${p.imageUrl}" alt="${p.name}" class="max-w-full max-h-full object-contain" onerror="this.onerror=null;this.src='https://i.imgur.com/IUBzxFv.jpeg';">
+                            </div>
+                            <div><div class="font-semibold text-gray-900 dark:text-white">${p.name}</div></div>
                         </div>
                     </td>
-                    <td data-label="SKU" class="p-4 text-sm text-gray-600">${p.sku}</td>
-                    <td data-label="Brand" class="p-4 text-sm text-gray-600">${p.brand}</td>
-                    <td data-label="UPC" class="p-4 text-sm text-gray-600">${p.upc}</td>
-                    <td data-label="Available" class="p-4 text-sm text-green-600 font-medium">${p.availability}</td>
-                    <td data-label="Price" class="p-4 text-sm text-gray-800 font-semibold text-right">$${p.price.toFixed(2)}</td>
-                    <td data-label="Quantity" class="p-4"><input type="number" min="0" value="${quantityInCart}" data-sku="${p.sku}" class="w-20 text-center border border-gray-300 rounded-md py-1 px-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"></td>
-                    <td data-label="Subtotal" class="p-4 text-sm font-bold text-gray-900 text-right" data-subtotal-for="${p.sku}">$${(p.price * quantityInCart).toFixed(2)}</td>
+                    <td data-label="SKU" class="p-4 text-sm text-gray-600 dark:text-gray-400">${p.sku}</td>
+                    <td data-label="Brand" class="p-4 text-sm text-gray-600 dark:text-gray-400">${p.brand || ''}</td>
+                    <td data-label="UPC" class="p-4 text-sm text-gray-600 dark:text-gray-400">${p.upc}</td>
+                    <td data-label="Available" class="p-4 text-sm text-green-600 dark:text-green-400 font-medium">${p.availability}</td>
+                    <td data-label="Price" class="p-4 text-sm text-gray-800 dark:text-gray-300 font-semibold text-right">$${p.price.toFixed(2)}</td>
+                    <td data-label="Quantity" class="p-4"><input type="number" min="0" value="${quantityInCart}" data-sku="${p.sku}" class="form-input w-20 text-center"></td>
+                    <td data-label="Subtotal" class="p-4 text-sm font-bold text-gray-900 dark:text-white text-right" data-subtotal-for="${p.sku}">$${(p.price * quantityInCart).toFixed(2)}</td>
                 `;
                 productTableBody.appendChild(row);
             });
@@ -288,23 +369,43 @@
             paginationControls.innerHTML = '';
             const prevDisabled = !hasPrevPage ? 'pointer-events-none opacity-50' : '';
             const nextDisabled = !hasNextPage ? 'pointer-events-none opacity-50' : '';
-            paginationControls.innerHTML = `<div class="flex justify-center mt-4 space-x-4"><button id="prev-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${prevDisabled}"> Previous Page </button><button id="next-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 ${nextDisabled}"> Next Page </button></div>`;
+            paginationControls.innerHTML = `<div class="flex justify-center mt-4 space-x-4"><button id="prev-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 ${prevDisabled}"> Previous Page </button><button id="next-page-btn" class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 ${nextDisabled}"> Next Page </button></div>`;
             if (hasPrevPage) { document.getElementById('prev-page-btn').addEventListener('click', () => { currentPage--; fetchProducts('prev'); }); }
             if (hasNextPage) { document.getElementById('next-page-btn').addEventListener('click', () => { currentPage++; fetchProducts('next'); }); }
         }
         
-        // --- SEARCH EVENT LISTENERS ---
-        function performSearch() {
-            currentSearchQuery = searchInput.value.trim();
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            function performSearch() {
+                currentSearchQuery = searchInput.value.trim();
+                resetAndFetch();
+            }
+            searchBtn.addEventListener('click', performSearch);
+            searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') performSearch(); });
+            clearSearchBtn.addEventListener('click', () => {
+                searchInput.value = '';
+                currentSearchQuery = '';
+                resetAndFetch();
+            });
+
+            brandFilter.addEventListener('change', () => {
+                currentBrandFilter = brandFilter.value;
+                resetAndFetch();
+            });
+            sortBy.addEventListener('change', () => {
+                currentSortBy = sortBy.value;
+                resetAndFetch();
+            });
+            itemsPerPageSelect.addEventListener('change', () => {
+                itemsPerPage = parseInt(itemsPerPageSelect.value, 10);
+                resetAndFetch();
+            });
+        }
+
+        function resetAndFetch() {
             lastVisibleDoc = null; firstVisibleDoc = null; currentPage = 1;
             fetchProducts();
         }
-        searchBtn.addEventListener('click', performSearch);
-        searchInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') performSearch(); });
-        clearSearchBtn.addEventListener('click', () => {
-            searchInput.value = ''; currentSearchQuery = ''; lastVisibleDoc = null; firstVisibleDoc = null; currentPage = 1;
-            fetchProducts();
-        });
 
         // --- CART & ORDER LOGIC ---
         const cartItemsContainer=document.getElementById('cart-items');
@@ -313,19 +414,10 @@
         function handleQuantityChange(e){
             const sku = e.target.dataset.sku;
             const quantity = parseInt(e.target.value, 10) || 0;
-            
-            if (quantity > 0) {
-                cart[sku] = quantity;
-            } else {
-                delete cart[sku];
-            }
-            
+            if (quantity > 0) { cart[sku] = quantity; } else { delete cart[sku]; }
             const product = productCache[sku];
             const subtotalEl = document.querySelector(`[data-subtotal-for="${sku}"]`);
-            if (product && subtotalEl) {
-                subtotalEl.textContent = `$${(product.price * quantity).toFixed(2)}`;
-            }
-            
+            if (product && subtotalEl) { subtotalEl.textContent = `$${(product.price * quantity).toFixed(2)}`; }
             updateCart();
         }
         
@@ -334,7 +426,7 @@
             const cartItemCountEl = document.getElementById('cart-item-count');
 
             if (Object.keys(cart).length === 0) {
-                cartItemsContainer.innerHTML = '<p class="text-gray-500 text-center">Your cart is empty.</p>';
+                cartItemsContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">Your cart is empty.</p>';
                 cartTotalEl.textContent = '$0.00';
                 proceedBtn.disabled = true;
                 cartItemCountEl.classList.add('hidden');
@@ -351,9 +443,7 @@
                 const fetchPromises = skusToFetch.map(sku => {
                     const docRef = doc(db, "products", sku);
                     return getDoc(docRef).then(docSnap => {
-                        if (docSnap.exists()) {
-                            productCache[sku] = { sku: docSnap.id, ...docSnap.data() };
-                        }
+                        if (docSnap.exists()) { productCache[sku] = { sku: docSnap.id, ...docSnap.data() }; }
                     });
                 });
                 await Promise.all(fetchPromises);
@@ -368,10 +458,10 @@
                     itemCount += quantity;
                     cartHtml += `
                         <div class="flex items-center gap-4">
-                            <img src="${product.imageUrl}" class="h-12 w-12 rounded-md object-cover" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/4a5568?text=N/A';">
+                            <img src="${product.imageUrl}" class="h-12 w-12 rounded-md object-contain" onerror="this.onerror=null;this.src='https://i.imgur.com/IUBzxFv.jpeg';">
                             <div class="flex-grow">
                                 <div class="font-semibold">${product.name}</div>
-                                <div class="text-sm text-gray-500">${quantity} x $${product.price.toFixed(2)}</div>
+                                <div class="text-sm text-gray-500 dark:text-gray-400">${quantity} x $${product.price.toFixed(2)}</div>
                             </div>
                             <div class="font-semibold">$${subtotal.toFixed(2)}</div>
                         </div>
@@ -388,12 +478,15 @@
             cartItemCountEl.classList.remove('hidden');
         }
         
-        // --- MODAL CONTROLS ---
+        // --- MODAL & THEME CONTROLS ---
         const closeCartBtn = document.getElementById('close-cart-btn');
         const closeCustomerInfoBtn = document.getElementById('close-customer-info-btn');
         const proceedToOrderBtn = document.getElementById('proceed-to-order-btn');
         const submitFinalOrderBtn = document.getElementById('submit-final-order-btn');
         const statusCloseBtn = document.getElementById('status-close-btn');
+        const themeToggle = document.getElementById('theme-toggle');
+        const lightIcon = document.getElementById('theme-icon-light');
+        const darkIcon = document.getElementById('theme-icon-dark');
 
         function toggleCart(show) {
             const cartPanel = cartModal.querySelector('div');
@@ -407,12 +500,31 @@
         }
 
         function toggleModal(modal, show) {
-            if (show) {
-                modal.classList.remove('hidden');
+            if (show) { modal.classList.remove('hidden'); } else { modal.classList.add('hidden'); }
+        }
+
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                lightIcon.classList.add('hidden');
+                darkIcon.classList.remove('hidden');
             } else {
-                modal.classList.add('hidden');
+                document.documentElement.classList.remove('dark');
+                lightIcon.classList.remove('hidden');
+                darkIcon.classList.add('hidden');
             }
         }
+        
+        themeToggle.addEventListener('click', () => {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+            initTheme();
+        });
         
         cartBtn.addEventListener('click', () => toggleCart(true));
         closeCartBtn.addEventListener('click', () => toggleCart(false));
