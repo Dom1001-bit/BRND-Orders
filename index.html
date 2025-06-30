@@ -153,7 +153,6 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-        // **CORRECTED IMPORT**: Added 'doc' and 'getDoc' for fetching individual products for the cart.
         import { getFirestore, collection, query, where, orderBy, limit, getDocs, startAfter, endBefore, limitToLast, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         // === IMPORTANT: PASTE YOUR NEWEST FIREBASE CONFIG HERE ===
@@ -330,7 +329,6 @@
             updateCart();
         }
         
-        // **CORRECTED LOGIC**: This function now fetches product details from Firestore if they aren't cached.
         async function updateCart() {
             const proceedBtn = document.getElementById('proceed-to-order-btn');
             const cartItemCountEl = document.getElementById('cart-item-count');
@@ -397,6 +395,17 @@
         const submitFinalOrderBtn = document.getElementById('submit-final-order-btn');
         const statusCloseBtn = document.getElementById('status-close-btn');
 
+        function toggleCart(show) {
+            const cartPanel = cartModal.querySelector('div');
+            if (show) {
+                cartModal.classList.remove('hidden');
+                setTimeout(() => cartPanel.classList.remove('translate-x-full'), 20);
+            } else {
+                cartPanel.classList.add('translate-x-full');
+                setTimeout(() => cartModal.classList.add('hidden'), 300);
+            }
+        }
+
         function toggleModal(modal, show) {
             if (show) {
                 modal.classList.remove('hidden');
@@ -405,10 +414,10 @@
             }
         }
         
-        cartBtn.addEventListener('click', () => toggleModal(cartModal, true));
-        closeCartBtn.addEventListener('click', () => toggleModal(cartModal, false));
+        cartBtn.addEventListener('click', () => toggleCart(true));
+        closeCartBtn.addEventListener('click', () => toggleCart(false));
         proceedToOrderBtn.addEventListener('click', () => {
-            toggleModal(cartModal, false);
+            toggleCart(false);
             toggleModal(customerInfoModal, true);
         });
         closeCustomerInfoBtn.addEventListener('click', () => toggleModal(customerInfoModal, false));
