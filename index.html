@@ -60,6 +60,13 @@
 
             <!-- Products Table -->
             <div id="product-area" class="hidden">
+                <!-- SEARCH CONTROLS -->
+                <div class="mb-4 flex gap-2">
+                    <input type="search" id="search-input" placeholder="Search by Name, Brand, or UPC..." class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button id="search-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700">Search</button>
+                    <button id="clear-search-btn" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600">Clear</button>
+                </div>
+
                  <div class="overflow-x-auto bg-white rounded-lg shadow">
                     <table class="w-full table-responsive">
                         <thead class="bg-gray-100">
@@ -128,7 +135,7 @@
         };
         
         // **IMPORTANT**: Get your NEW deployment URL after deploying the updated script.
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwFxPpMoGMDatDA0rMK-BG5gPKEvS956un_jnBzNKuNvf-YJTasiWsrM6wbtoYs5U71/exec'; // Replace with your new URL
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzLbPZBE87NcrEHN4VOl9Uxr2HyQgL8_nh2pjbj5s7wYneBSAhJqFrglbzkpf1KtCqZ/exec'; // Replace with your new URL
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
@@ -142,10 +149,14 @@
         const productTableBody = document.getElementById('product-table-body');
         const loadingProducts = document.getElementById('loading-products');
         const paginationControls = document.getElementById('pagination-controls');
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+        const clearSearchBtn = document.getElementById('clear-search-btn');
         
         // --- App State ---
         let allProducts = []; // Will store products for the current page
         let cart = {}; // { sku: quantity }
+        let currentSearchQuery = '';
 
         // --- AUTHENTICATION ---
         onAuthStateChanged(auth, user => {
@@ -164,12 +175,22 @@
         });
         
         // --- PRODUCT FETCHING & DISPLAY ---
-        async function fetchProducts(page = 1) {
+        async function fetchProducts(page = 1, searchQuery = '') {
             loadingProducts.classList.remove('hidden');
             productArea.classList.add('hidden');
             
+            currentSearchQuery = searchQuery; // Update state
+
             try {
-                const response = await fetch(`${APPS_SCRIPT_URL}?page=${page}&limit=10`);
+                // Build the URL with parameters
+                const url = new URL(APPS_SCRIPT_URL);
+                url.searchParams.append('page', page);
+                url.searchParams.append('limit', 100);
+                if (searchQuery) {
+                    url.searchParams.append('searchQuery', searchQuery);
+                }
+
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.success) {
@@ -189,6 +210,10 @@
         
         function displayProducts() {
             productTableBody.innerHTML = '';
+            if (allProducts.length === 0) {
+                 productTableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-gray-500">No products found.</td></tr>`;
+                 return;
+            }
             allProducts.forEach(p => {
                 const row = document.createElement('tr');
                 const quantityInCart = cart[p.sku] || 0;
@@ -242,6 +267,7 @@
                         <span class="font-medium">${currentPage}</span>
                         of
                         <span class="font-medium">${totalPages}</span>
+                        (Total: ${totalItems} items)
                         </p>
                     </div>
                     <div>
@@ -262,17 +288,31 @@
             document.querySelectorAll('.prev-btn, .next-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const page = e.currentTarget.dataset.page;
-                    fetchProducts(parseInt(page));
+                    // Pass the current search query when paginating
+                    fetchProducts(parseInt(page), currentSearchQuery);
                 })
             })
         }
 
-        // The rest of the JS code (auth, cart, modals) remains the same as your last version...
-        // Sign-in/Sign-up listeners
-        document.getElementById('signin-btn').addEventListener('click',()=>signInWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));document.getElementById('signup-btn').addEventListener('click',()=>createUserWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));
-        
-        // Cart and Modal declarations and listeners
-        const cartModal=document.getElementById('cart-modal'),cartItemsContainer=document.getElementById('cart-items'),cartTotalEl=document.getElementById('cart-total'),submitOrderBtn=document.getElementById('submit-order-btn'),closeCartBtn=document.getElementById('close-cart-btn'),statusModal=document.getElementById('status-modal'),statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message'),statusCloseBtn=document.getElementById('status-close-btn');function handleQuantityChange(e){const t=e.target.dataset.sku,a=parseInt(e.target.value,10)||0;a>0?cart[t]=a:delete cart[t];const n=allProducts.find(e=>e.sku===t),o=document.querySelector(`[data-subtotal-for="${t}"]`);n&&o&&(o.textContent=`$${(n.price*a).toFixed(2)}`),updateCart()}function updateCart(){if(0===Object.keys(cart).length)return cartItemsContainer.innerHTML='<p class="text-gray-500 text-center">Your cart is empty.</p>',cartTotalEl.textContent="$0.00",submitOrderBtn.disabled=!0,void document.getElementById("cart-item-count").classList.add("hidden");let e=0,t='<div class="space-y-4">',a=0;for(const n in cart){const o=allProducts.find(e=>e.sku===n),l=cart[n];if(o){const c=o.price*l;e+=c,a+=l,t+=`\n                        <div class="flex items-center gap-4">\n                            <img src="${o.imageUrl}" class="h-12 w-12 rounded-md object-cover">\n                            <div class="flex-grow">\n                                <div class="font-semibold">${o.name}</div>\n                                <div class="text-sm text-gray-500">${l} x $${o.price.toFixed(2)}</div>\n                            </div>\n                            <div class="font-semibold">$${c.toFixed(2)}</div>\n                        </div>\n                    `}}t+="</div>",cartItemsContainer.innerHTML=t,cartTotalEl.textContent=`$${e.toFixed(2)}`,submitOrderBtn.disabled=!1;const n=document.getElementById("cart-item-count");n.textContent=a,n.classList.remove("hidden")}function toggleCart(){cartModal.classList.toggle("hidden"),cartModal.querySelector("div").classList.toggle("translate-x-full")}async function placeOrder(){const e=auth.currentUser;if(!e)return void showStatusModal("Error","You must be signed in to place an order.");submitOrderBtn.disabled=!0,submitOrderBtn.textContent="Submitting...";const t=Object.keys(cart).map(e=>{const t=allProducts.find(t=>t.sku===e);return{...t,quantity:cart[e]}}),a=parseFloat(cartTotalEl.textContent.replace("$","")),n={user:{email:e.email,uid:e.uid},items:t,total:a};try{const o=await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"cors",redirect:"follow",body:JSON.stringify(n),headers:{"Content-Type":"text/plain;charset=utf-8"}}),l=await o.json();if(l.success)showStatusModal("Success!",`Your order #${l.orderNumber} has been submitted.`),toggleCart(),resetOrderState();else throw new Error(l.message)}catch(c){showStatusModal("Order Failed",`There was an issue: ${c.message}`)}finally{submitOrderBtn.disabled=!1,submitOrderBtn.textContent="Proceed to Order"}}function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart()}function showStatusModal(e,t){statusTitle.textContent=e,statusMessage.textContent=t,statusModal.classList.remove("hidden")}function renderHeaderControls(e){headerControls.innerHTML=`\n                <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-100">\n                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>\n                    <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>\n                </button>\n                <div class="flex items-center gap-2">\n                     <span class="text-sm text-gray-600 hidden md:block">${e.email}</span>\n                     <button id="signout-btn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Sign Out</button>\n                </div>\n            `,document.getElementById("signout-btn").addEventListener("click",()=>signOut(auth)),document.getElementById("cart-btn").addEventListener("click",toggleCart),closeCartBtn.addEventListener("click",toggleCart)}submitOrderBtn.addEventListener('click',placeOrder),statusCloseBtn.addEventListener('click',()=>statusModal.classList.add('hidden'));
+        // --- SEARCH EVENT LISTENERS ---
+        function performSearch() {
+            const query = searchInput.value.trim();
+            fetchProducts(1, query); // Always go to page 1 for a new search
+        }
+        searchBtn.addEventListener('click', performSearch);
+        searchInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+        clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            fetchProducts(1, ''); // Fetch all products from page 1
+        });
+
+
+        // The rest of the JS code (auth, cart, modals) remains the same...
+        document.getElementById('signin-btn').addEventListener('click',()=>signInWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));document.getElementById('signup-btn').addEventListener('click',()=>createUserWithEmailAndPassword(auth,document.getElementById('email').value,document.getElementById('password').value).catch(e=>{let l=document.getElementById('login-error');l.textContent=e.message;l.classList.remove('hidden')}));const cartModal=document.getElementById('cart-modal'),cartItemsContainer=document.getElementById('cart-items'),cartTotalEl=document.getElementById('cart-total'),submitOrderBtn=document.getElementById('submit-order-btn'),closeCartBtn=document.getElementById('close-cart-btn'),statusModal=document.getElementById('status-modal'),statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message'),statusCloseBtn=document.getElementById('status-close-btn');function handleQuantityChange(e){const t=e.target.dataset.sku,a=parseInt(e.target.value,10)||0;a>0?cart[t]=a:delete cart[t];const n=allProducts.find(e=>e.sku===t),o=document.querySelector(`[data-subtotal-for="${t}"]`);n&&o&&(o.textContent=`$${(n.price*a).toFixed(2)}`),updateCart()}function updateCart(){if(0===Object.keys(cart).length)return cartItemsContainer.innerHTML='<p class="text-gray-500 text-center">Your cart is empty.</p>',cartTotalEl.textContent="$0.00",submitOrderBtn.disabled=!0,void document.getElementById("cart-item-count").classList.add("hidden");let e=0,t='<div class="space-y-4">',a=0;for(const n in cart){const o=allProducts.find(e=>e.sku===n),l=cart[n];if(o){const c=o.price*l;e+=c,a+=l,t+=`\n                        <div class="flex items-center gap-4">\n                            <img src="${o.imageUrl}" class="h-12 w-12 rounded-md object-cover">\n                            <div class="flex-grow">\n                                <div class="font-semibold">${o.name}</div>\n                                <div class="text-sm text-gray-500">${l} x $${o.price.toFixed(2)}</div>\n                            </div>\n                            <div class="font-semibold">$${c.toFixed(2)}</div>\n                        </div>\n                    `}}t+="</div>",cartItemsContainer.innerHTML=t,cartTotalEl.textContent=`$${e.toFixed(2)}`,submitOrderBtn.disabled=!1;const n=document.getElementById("cart-item-count");n.textContent=a,n.classList.remove("hidden")}function toggleCart(){cartModal.classList.toggle("hidden"),cartModal.querySelector("div").classList.toggle("translate-x-full")}async function placeOrder(){const e=auth.currentUser;if(!e)return void showStatusModal("Error","You must be signed in to place an order.");submitOrderBtn.disabled=!0,submitOrderBtn.textContent="Submitting...";const t=Object.keys(cart).map(e=>{let t=allProducts.find(t=>t.sku===e);if(!t){const a=Object.values(cart).map(t=>Object.keys(cart).find(e=>cart[e]===t));t=a.find(t=>t.sku===e)}return{...t,quantity:cart[e]}}),a=parseFloat(cartTotalEl.textContent.replace("$","")),n={user:{email:e.email,uid:e.uid},items:t,total:a};try{const o=await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"cors",redirect:"follow",body:JSON.stringify(n),headers:{"Content-Type":"text/plain;charset=utf-8"}}),l=await o.json();if(l.success)showStatusModal("Success!",`Your order #${l.orderNumber} has been submitted.`),toggleCart(),resetOrderState();else throw new Error(l.message)}catch(c){showStatusModal("Order Failed",`There was an issue: ${c.message}`)}finally{submitOrderBtn.disabled=!1,submitOrderBtn.textContent="Proceed to Order"}}function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart()}function showStatusModal(e,t){statusTitle.textContent=e,statusMessage.textContent=t,statusModal.classList.remove("hidden")}function renderHeaderControls(e){headerControls.innerHTML=`\n                <button id="cart-btn" class="relative p-2 rounded-full hover:bg-gray-100">\n                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>\n                    <span id="cart-item-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden">0</span>\n                </button>\n                <div class="flex items-center gap-2">\n                     <span class="text-sm text-gray-600 hidden md:block">${e.email}</span>\n                     <button id="signout-btn" class="bg-gray-200 text-gray-700 px-3 py-1 rounded-md text-sm hover:bg-gray-300">Sign Out</button>\n                </div>\n            `,document.getElementById("signout-btn").addEventListener("click",()=>signOut(auth)),document.getElementById("cart-btn").addEventListener("click",toggleCart),closeCartBtn.addEventListener("click",toggleCart)}submitOrderBtn.addEventListener('click',placeOrder),statusCloseBtn.addEventListener('click',()=>statusModal.classList.add('hidden'));
 
     </script>
 </body>
