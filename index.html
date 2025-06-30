@@ -189,7 +189,7 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
+        import { initializeApp as initializeFirebaseApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
         import { getFirestore, collection, query, where, orderBy, limit, getDocs, startAfter, endBefore, limitToLast, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
         // === IMPORTANT: PASTE YOUR NEWEST FIREBASE CONFIG HERE ===
@@ -206,7 +206,7 @@
         const ORDER_SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbzLbPZBE87NcrEHN4VOl9Uxr2HyQgL8_nh2pjbj5s7wYneBSAhJqFrglbzkpf1KtCqZ/exec';
 
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
+        const app = initializeFirebaseApp(firebaseConfig);
         const db = getFirestore(app);
 
         // --- DOM Elements ---
@@ -233,13 +233,13 @@
         let currentBrandFilter = '';
 
         // --- INITIALIZATION ---
-        function initializeApp() {
+        function startApp() {
             fetchProducts(); 
             populateBrandFilter();
             setupEventListeners();
             initTheme();
         }
-        initializeApp();
+        startApp();
         
         // --- PRODUCT & BRAND FETCHING (FIRESTORE) ---
         async function populateBrandFilter() {
@@ -591,3 +591,5 @@
     </script>
 </body>
 </html>
+"
+I want to change the title to "BRND Direct Order Port
