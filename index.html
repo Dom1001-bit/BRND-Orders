@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRND Direct Order Portal</title>
+    <title>BRND Direct Order Port</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -72,35 +72,26 @@
             <!-- Products Table -->
             <div id="product-area" class="hidden">
                 <!-- SEARCH & FILTER CONTROLS -->
-                <div class="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="lg:col-span-2">
-                        <input type="search" id="search-input" placeholder="Search by Name, Brand, or UPC..." class="form-input h-full">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                    <div class="flex-grow flex gap-2">
+                        <input type="search" id="search-input" placeholder="Search by Name, Brand, or UPC..." class="form-input w-full">
+                        <button id="search-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 flex-shrink-0">Search</button>
+                        <button id="clear-search-btn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 flex-shrink-0">Clear</button>
                     </div>
-                    <button id="search-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 h-full">Search</button>
-                    <button id="clear-search-btn" class="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 h-full">Clear</button>
-                </div>
-                <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label for="brand-filter" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Brand</label>
-                        <select id="brand-filter" class="form-input mt-1"></select>
-                    </div>
-                    <div>
-                        <label for="sort-by" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sort by</label>
-                        <select id="sort-by" class="form-input mt-1">
-                            <option value="sku">SKU</option>
-                            <option value="name_lowercase">Item Name</option>
-                            <option value="brand_lowercase">Brand</option>
-                            <option value="upc">UPC</option>
+                    <div class="flex items-center gap-2 md:gap-4">
+                        <select id="brand-filter" class="form-input text-sm"></select>
+                        <select id="sort-by" class="form-input text-sm">
+                            <option value="sku">Sort: SKU</option>
+                            <option value="name_lowercase">Sort: Name</option>
+                            <option value="brand_lowercase">Sort: Brand</option>
+                            <option value="upc">Sort: UPC</option>
                         </select>
-                    </div>
-                    <div>
-                        <label for="items-per-page" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Items per Page</label>
-                        <select id="items-per-page" class="form-input mt-1">
-                            <option value="10">10</option>
-                            <option value="20">20</option>
-                            <option value="50">50</option>
-                            <option value="100" selected>100</option>
-                            <option value="200">200</option>
+                        <select id="items-per-page" class="form-input text-sm">
+                            <option value="10">10/page</option>
+                            <option value="20">20/page</option>
+                            <option value="50">50/page</option>
+                            <option value="100" selected>100/page</option>
+                            <option value="200">200/page</option>
                         </select>
                     </div>
                 </div>
@@ -234,10 +225,10 @@
 
         // --- INITIALIZATION ---
         function startApp() {
-            fetchProducts(); 
-            populateBrandFilter();
             setupEventListeners();
             initTheme();
+            populateBrandFilter();
+            fetchProducts(); 
         }
         startApp();
         
@@ -400,6 +391,26 @@
                 itemsPerPage = parseInt(itemsPerPageSelect.value, 10);
                 resetAndFetch();
             });
+
+            document.getElementById('cart-btn').addEventListener('click', () => toggleCart(true));
+            document.getElementById('close-cart-btn').addEventListener('click', () => toggleCart(false));
+            document.getElementById('proceed-to-order-btn').addEventListener('click', () => {
+                toggleCart(false);
+                toggleModal(document.getElementById('customer-info-modal'), true);
+            });
+            document.getElementById('close-customer-info-btn').addEventListener('click', () => toggleModal(document.getElementById('customer-info-modal'), false));
+            document.getElementById('submit-final-order-btn').addEventListener('click', placeOrder);
+            document.getElementById('status-close-btn').addEventListener('click', () => toggleModal(document.getElementById('status-modal'), false));
+            document.getElementById('theme-toggle').addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.theme = 'light';
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.theme = 'dark';
+                }
+                initTheme();
+            });
         }
 
         function resetAndFetch() {
@@ -479,16 +490,8 @@
         }
         
         // --- MODAL & THEME CONTROLS ---
-        const closeCartBtn = document.getElementById('close-cart-btn');
-        const closeCustomerInfoBtn = document.getElementById('close-customer-info-btn');
-        const proceedToOrderBtn = document.getElementById('proceed-to-order-btn');
-        const submitFinalOrderBtn = document.getElementById('submit-final-order-btn');
-        const statusCloseBtn = document.getElementById('status-close-btn');
-        const themeToggle = document.getElementById('theme-toggle');
-        const lightIcon = document.getElementById('theme-icon-light');
-        const darkIcon = document.getElementById('theme-icon-dark');
-
         function toggleCart(show) {
+            const cartModal = document.getElementById('cart-modal');
             const cartPanel = cartModal.querySelector('div');
             if (show) {
                 cartModal.classList.remove('hidden');
@@ -504,6 +507,9 @@
         }
 
         function initTheme() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const lightIcon = document.getElementById('theme-icon-light');
+            const darkIcon = document.getElementById('theme-icon-dark');
             if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
                 lightIcon.classList.add('hidden');
@@ -515,28 +521,8 @@
             }
         }
         
-        themeToggle.addEventListener('click', () => {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-            }
-            initTheme();
-        });
-        
-        cartBtn.addEventListener('click', () => toggleCart(true));
-        closeCartBtn.addEventListener('click', () => toggleCart(false));
-        proceedToOrderBtn.addEventListener('click', () => {
-            toggleCart(false);
-            toggleModal(customerInfoModal, true);
-        });
-        closeCustomerInfoBtn.addEventListener('click', () => toggleModal(customerInfoModal, false));
-        statusCloseBtn.addEventListener('click', () => toggleModal(statusModal, false));
-        
         // --- FINAL SUBMISSION ---
-        submitFinalOrderBtn.addEventListener('click', async () => {
+        async function placeOrder() {
             const customer = {
                 name: document.getElementById('cust-name').value.trim(),
                 company: document.getElementById('cust-company').value.trim(),
@@ -562,6 +548,7 @@
             }
             formError.classList.add('hidden');
 
+            const submitFinalOrderBtn = document.getElementById('submit-final-order-btn');
             submitFinalOrderBtn.disabled = true;
             submitFinalOrderBtn.textContent = 'Submitting...';
 
@@ -573,7 +560,7 @@
                 const response = await fetch(ORDER_SUBMIT_URL, { method: 'POST', mode: 'cors', redirect: "follow", body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
                 const result = await response.json();
                 if (result.success) {
-                    toggleModal(customerInfoModal, false);
+                    toggleModal(document.getElementById('customer-info-modal'), false);
                     showStatusModal('Success!', `Your order #${result.orderNumber} has been submitted.`);
                     resetOrderState();
                 } else { throw new Error(result.message); }
@@ -583,13 +570,11 @@
                 submitFinalOrderBtn.disabled = false;
                 submitFinalOrderBtn.textContent = 'Submit Final Order';
             }
-        });
+        }
 
         function resetOrderState(){cart={},document.querySelectorAll('input[data-sku]').forEach(e=>e.value=""),document.querySelectorAll("[data-subtotal-for]").forEach(e=>e.textContent="$0.00"),updateCart(); document.getElementById('customer-form').reset();}
-        function showStatusModal(title, message){const statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message');statusTitle.textContent=title,statusMessage.textContent=message,toggleModal(statusModal,true)}
+        function showStatusModal(title, message){const statusTitle=document.getElementById('status-title'),statusMessage=document.getElementById('status-message');statusTitle.textContent=title,statusMessage.textContent=message,toggleModal(document.getElementById('status-modal'),true)}
 
     </script>
 </body>
 </html>
-"
-I want to change the title to "BRND Direct Order Port
